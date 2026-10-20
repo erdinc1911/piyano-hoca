@@ -169,6 +169,7 @@ main {
 .mesaj {
   min-height: 1.2em;
   font-size: 0.9rem;
+  word-break: break-word;
 }
 
 .ipucu {
@@ -189,11 +190,161 @@ main {
   display: none;
 }
 
-#ses-ilerleme-dolgu {
+.ilerleme > div {
   height: 100%;
   width: 0;
   background: #2f7d4f;
   transition: width 0.2s;
+}
+
+/* ---------- KÜTÜPHANE: ESER LİSTESİ ---------- */
+
+.eser-satir {
+  background: #2d2d4d;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.eser-bilgi b {
+  display: block;
+  font-size: 1.05rem;
+  word-break: break-word;
+}
+
+.eser-bilgi span {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.kart .eser-islem {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.kart .eser-islem button {
+  width: auto;
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  background: #3a3a55;
+}
+
+.kart .eser-islem button.birincil {
+  background: #2f7d4f;
+}
+
+.kart .eser-islem button.uyari {
+  background: #8a3b3b;
+}
+
+/* ---------- GÖRÜNTÜLEYİCİ (PDF VE FOTOĞRAF) ---------- */
+
+#gorunum {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  background: #14142a;
+  display: flex;
+  flex-direction: column;
+}
+
+#gorunum[hidden] {
+  display: none;
+}
+
+#gor-cubuk {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 12px;
+  background: #1b1b2f;
+}
+
+#gor-baslik {
+  flex: 1;
+  min-width: 100px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gor-dugme {
+  background: #3d5a99;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 1rem;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.gor-dugme:active {
+  background: #5577cc;
+}
+
+.gor-dugme:disabled {
+  opacity: 0.4;
+}
+
+.gor-dugme.secili {
+  background: #6b3fa0;
+}
+
+.gor-grup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.gor-grup[hidden] {
+  display: none;
+}
+
+#gor-sayfa, #gor-yakinlik {
+  min-width: 52px;
+  text-align: center;
+}
+
+#gor-alan {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+  padding: 8px;
+  background: #2b2b44;
+  -webkit-overflow-scrolling: touch;
+}
+
+#gor-alan > * {
+  margin: auto;
+  flex: none;
+}
+
+#gor-alan canvas,
+#gor-alan img {
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  max-width: none;
+}
+
+.gor-mesaj {
+  max-width: 480px;
+  padding: 20px;
+  text-align: center;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 /* ---------- ÇAL SEKMESİ: ESER ÇUBUĞU ---------- */

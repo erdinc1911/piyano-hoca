@@ -1,7 +1,7 @@
-const SURUM = 'piyano-hoca-asama5-v1';
+const SURUM = 'piyano-hoca-asama6-v1';
 const DOSYALAR = [
   './', 'index.html', 'style.css', 'app.js', 'eser.js', 'porte.js', 'piyano-ses.js',
-  'manifest.json', 'icon.svg'
+  'kutuphane.js', 'manifest.json', 'icon.svg'
 ];
 
 self.addEventListener('install', (e) => {
@@ -14,7 +14,7 @@ self.addEventListener('install', (e) => {
 });
 
 // Yalnızca eski uygulama önbelleklerini sil.
-// İndirilen piyano sesleri ayrı bir kutuda ('piyano-sesler-v1') durur ve silinmez.
+// İndirilen piyano sesleri ('piyano-sesler-v1') ve PDF desteği ('piyano-pdf-v1') silinmez.
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((adlar) =>

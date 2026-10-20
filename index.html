@@ -24,16 +24,33 @@
     <section id="sekme-kutuphane" class="sekme">
       <div class="sayfa">
         <h2>Kütüphane</h2>
+
         <div class="kart">
           <p class="buyuk">Örnek eser</p>
           <p id="ornek-bilgi"></p>
           <button id="btn-ornek-ac" type="button">Çal sekmesinde aç</button>
         </div>
+
         <div class="kart">
           <p class="buyuk">Kendi eserlerin</p>
-          <p>Nota dosyası (PDF, JPG, PNG) ekleme, eserleri saklama ve yedekleme Aşama 6'da eklenecek.</p>
-          <button type="button" class="pasif-dugme" disabled>＋ Eser ekle (yakında)</button>
+          <p class="ipucu">PDF, JPG, JPEG ve PNG nota dosyaları eklenir, bu cihazda saklanır ve internetsiz açılır. Bu sürümde dosyalar görüntülenir; nota tanıma ve çalma sonraki aşamalarda gelecek. Dosya başına en fazla 50 MB.</p>
+          <button id="btn-eser-ekle" type="button">＋ Eser ekle</button>
+          <input id="dosya-sec" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple hidden>
+          <p id="kut-mesaj" class="mesaj"></p>
+          <div id="eser-listesi"></div>
         </div>
+
+        <div class="kart">
+          <p class="buyuk">Yedekleme</p>
+          <div class="satir"><span>Kayıtlı eser</span><b id="kut-sayi">0</b></div>
+          <div class="satir"><span>Son yedek</span><b id="kut-yedek"></b></div>
+          <button id="btn-yedek-al" type="button">Tüm kütüphaneyi yedekle</button>
+          <button id="btn-yedek-yukle" type="button">Yedekten geri yükle</button>
+          <input id="yedek-sec" type="file" hidden>
+          <p id="yedek-mesaj" class="mesaj"></p>
+          <p class="ipucu">Yedek, tek bir .piyanohoca dosyasıdır ve İndirilenler klasörüne iner. Tarayıcı verisi silinirse eserler kaybolabilir; bu yüzden yedek dosyasını ayrıca bulutta ya da başka bir yerde sakla.</p>
+        </div>
+
         <div class="kart">
           <p class="buyuk">Gelecek özellikler</p>
           <ul>
@@ -97,6 +114,7 @@
     <section id="sekme-ayarlar" class="sekme">
       <div class="sayfa">
         <h2>Ayarlar</h2>
+
         <div class="kart">
           <p class="buyuk">Piyano sesi</p>
           <div class="satir"><span>Ses türü</span><b id="ay-ses"></b></div>
@@ -106,6 +124,17 @@
           <p id="ses-mesaj" class="mesaj"></p>
           <p class="ipucu">Piyano sesleri: Salamander Grand Piano V3, Alexander Holm, CC BY 3.0 (creativecommons.org/licenses/by/3.0). Bir kez internetle indirilir, sonra internetsiz çalışır. İndirilmediyse sentez ses kullanılır.</p>
         </div>
+
+        <div class="kart">
+          <p class="buyuk">PDF desteği</p>
+          <div class="satir"><span>Durum</span><b id="ay-pdf"></b></div>
+          <button id="btn-pdf-indir" type="button">PDF desteğini indir (≈1,4 MB)</button>
+          <div id="pdf-ilerleme" class="ilerleme" hidden><div id="pdf-ilerleme-dolgu"></div></div>
+          <button id="btn-pdf-sil" type="button" class="uyari">İndirilen PDF desteğini sil</button>
+          <p id="pdf-mesaj" class="mesaj"></p>
+          <p class="ipucu">PDF dosyalarını açmak için pdf.js (Mozilla, Apache 2.0 lisansı) kullanılır. Bir kez internetle indirilir, sonra internetsiz çalışır. Fotoğraflar (JPG, PNG) için gerekmez.</p>
+        </div>
+
         <div class="kart">
           <div class="satir"><span>Sürüm</span><b id="ay-surum"></b></div>
           <div class="satir"><span>Bağlantı</span><b id="ay-baglanti"></b></div>
@@ -114,6 +143,7 @@
           <div class="satir"><span>Kullanılan alan</span><b id="ay-alan"></b></div>
           <div class="satir"><span>Adres</span><b id="ay-adres"></b></div>
         </div>
+
         <div class="kart">
           <button id="btn-kalici" type="button">Kalıcı depolamayı iste</button>
           <button id="btn-yukle" type="button" hidden>Uygulamayı yükle</button>
@@ -124,9 +154,30 @@
     </section>
   </main>
 
+  <div id="gorunum" hidden>
+    <div id="gor-cubuk">
+      <button id="gor-geri" type="button" class="gor-dugme">← Geri</button>
+      <div id="gor-baslik"></div>
+      <div id="gor-sayfa-grup" class="gor-grup">
+        <button id="gor-onceki" type="button" class="gor-dugme" aria-label="Önceki sayfa">◀</button>
+        <span id="gor-sayfa"></span>
+        <button id="gor-sonraki" type="button" class="gor-dugme" aria-label="Sonraki sayfa">▶</button>
+      </div>
+      <div class="gor-grup">
+        <button id="gor-uzak" type="button" class="gor-dugme" aria-label="Uzaklaştır">−</button>
+        <span id="gor-yakinlik"></span>
+        <button id="gor-yakin" type="button" class="gor-dugme" aria-label="Yakınlaştır">+</button>
+      </div>
+      <button id="gor-genislik" type="button" class="gor-dugme">↔ Genişlik</button>
+      <button id="gor-sigdir" type="button" class="gor-dugme">⤢ Sayfa</button>
+    </div>
+    <div id="gor-alan"></div>
+  </div>
+
   <script src="eser.js"></script>
   <script src="porte.js"></script>
   <script src="piyano-ses.js"></script>
+  <script src="kutuphane.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const SURUM = 'Aşama 5.1';
+const SURUM = 'Aşama 6';
 
 const ILK_MIDI = 21;  // La0
 const SON_MIDI = 108; // Do8
@@ -11,6 +11,9 @@ let siyahGenislik = 36;
 
 // Elle çalmada tuş bırakılınca sesin sönme hızı (saniye). Büyüdükçe ses daha uzun çınlar.
 const BIRAKMA_SURESI = 0.3;
+
+// "Önbelleği temizle" düğmesinin silmeyeceği önbellekler (indirilen sesler ve PDF desteği)
+const KORUNAN_ONBELLEKLER = [PIYANO_ONBELLEK, 'piyano-pdf-v1'];
 
 const ADLAR = ['Do', 'Do♯', 'Re', 'Re♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si'];
 const HARFLER = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -889,6 +892,7 @@ function sekmeGoster(ad) {
   aktifSekme = ad;
 
   if (ad === 'cal' && klavyeKontrol) klavyeKontrol.geriYukle();
+  if (ad === 'kutuphane' && window.eserListesiYenile) window.eserListesiYenile();
   if (ad === 'ayarlar') ayarlarYenile();
 }
 
@@ -1029,6 +1033,7 @@ async function ayarlarYenile() {
   document.getElementById('ay-adres').textContent = location.origin;
   durumGuncelle();
   sesKartiYenile();
+  if (window.pdfKartiYenile) window.pdfKartiYenile();
 
   const cevrimdisi = document.getElementById('ay-cevrimdisi');
   if (!('serviceWorker' in navigator)) {
@@ -1079,7 +1084,7 @@ function ayarlarKur() {
   });
 
   document.getElementById('btn-temizle').addEventListener('click', async () => {
-    if (!confirm('Uygulama önbelleği silinip sayfa yenilensin mi? İndirilen piyano sesleri korunur. Bu aşamada kayıtlı eser olmadığı için veri kaybolmaz.')) return;
+    if (!confirm('Uygulama dosyalarının önbelleği silinip sayfa yenilensin mi? Kayıtlı eserlerin, indirilen piyano sesleri ve PDF desteği korunur.')) return;
     try {
       if ('serviceWorker' in navigator) {
         const kayitlar = await navigator.serviceWorker.getRegistrations();
@@ -1089,7 +1094,7 @@ function ayarlarKur() {
         const anahtarlar = await caches.keys();
         await Promise.all(
           anahtarlar
-            .filter((a) => a !== PIYANO_ONBELLEK)
+            .filter((a) => KORUNAN_ONBELLEKLER.indexOf(a) < 0)
             .map((a) => caches.delete(a))
         );
       }
@@ -1144,3 +1149,4 @@ ayarlarKur();
 durumGuncelle();
 servisCalisaniKaydet();
 sesleriBaslangictaYukle();
+if (window.kutuphaneBaslat) window.kutuphaneBaslat();
