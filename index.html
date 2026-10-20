@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1b1b2f">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>Piyano Hoca</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🎹 Piyano Hoca</h1>
+    <nav id="sekmeler">
+      <button type="button" class="sekme-dugme" data-sekme="kutuphane">📚 Kütüphane</button>
+      <button type="button" class="sekme-dugme aktif" data-sekme="cal">🎹 Çal</button>
+      <button type="button" class="sekme-dugme" data-sekme="ayarlar">⚙ Ayarlar</button>
+    </nav>
+    <span id="durum"></span>
+  </header>
+
+  <main>
+    <section id="sekme-kutuphane" class="sekme">
+      <div class="sayfa">
+        <h2>Kütüphane</h2>
+        <div class="kart">
+          <p class="buyuk">Örnek eser</p>
+          <p id="ornek-bilgi"></p>
+          <button id="btn-ornek-ac" type="button">Çal sekmesinde aç</button>
+        </div>
+        <div class="kart">
+          <p class="buyuk">Kendi eserlerin</p>
+          <p>Nota dosyası (PDF, JPG, PNG) ekleme, eserleri saklama ve yedekleme Aşama 6'da eklenecek.</p>
+          <button type="button" class="pasif-dugme" disabled>＋ Eser ekle (yakında)</button>
+        </div>
+        <div class="kart">
+          <p class="buyuk">Gelecek özellikler</p>
+          <ul>
+            <li>Çaldığını kontrol etme</li>
+            <li>Nota tanıma</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="sekme-cal" class="sekme aktif">
+      <div id="eser-cubugu">
+        <div id="eser-baslik"></div>
+        <button id="el-sag" type="button" class="el-dugme sag aktif">Sağ el</button>
+        <button id="el-sol" type="button" class="el-dugme sol aktif">Sol el</button>
+      </div>
+
+      <div id="calma-cubugu">
+        <button id="btn-cal" type="button" class="cal-dugme">▶ Çal</button>
+        <button id="btn-durdur" type="button" class="cal-dugme" disabled>⏹ Durdur</button>
+        <div class="grup">
+          <span class="etiket">Tempo</span>
+          <button id="tempo-azalt" type="button" class="kucuk" aria-label="Yavaşlat">−</button>
+          <input id="tempo-kaydirici" type="range" min="25" max="200" step="5" value="100">
+          <button id="tempo-artir" type="button" class="kucuk" aria-label="Hızlandır">+</button>
+          <span id="tempo-yazi"></span>
+        </div>
+        <div class="grup">
+          <span class="etiket">Ölçü</span>
+          <button id="bas-azalt" type="button" class="kucuk">−</button>
+          <span id="bas-yazi" class="sayi">1</span>
+          <button id="bas-artir" type="button" class="kucuk">+</button>
+          <span class="etiket">–</span>
+          <button id="son-azalt" type="button" class="kucuk">−</button>
+          <span id="son-yazi" class="sayi">8</span>
+          <button id="son-artir" type="button" class="kucuk">+</button>
+          <button id="bolum-tumu" type="button" class="kucuk genis">Tümü</button>
+        </div>
+        <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
+        <span id="olcu-gosterge"></span>
+      </div>
+
+      <div id="porte-kutu"></div>
+      <div id="nota-bilgi">Bir tuşa ya da porteki bir notaya dokun</div>
+      <div id="gezinme">
+        <button id="oktav-sol" type="button">◀ Oktav</button>
+        <input id="kaydirici" type="range" min="0" max="100" value="0" step="1">
+        <button id="oktav-sag" type="button">Oktav ▶</button>
+        <div id="boyut-grup">
+          <button id="kucult" type="button" aria-label="Tuşları küçült">−</button>
+          <span id="boyut-yazi">Tuş</span>
+          <button id="buyut" type="button" aria-label="Tuşları büyüt">+</button>
+        </div>
+        <span id="gorunen"></span>
+      </div>
+      <div id="kaydirma">
+        <div id="klavye"></div>
+      </div>
+    </section>
+
+    <section id="sekme-ayarlar" class="sekme">
+      <div class="sayfa">
+        <h2>Ayarlar</h2>
+        <div class="kart">
+          <p class="buyuk">Piyano sesi</p>
+          <div class="satir"><span>Ses türü</span><b id="ay-ses"></b></div>
+          <button id="btn-ses-indir" type="button">Piyano seslerini indir (≈5,4 MB)</button>
+          <div id="ses-ilerleme" class="ilerleme" hidden><div id="ses-ilerleme-dolgu"></div></div>
+          <button id="btn-ses-sil" type="button" class="uyari">İndirilen sesleri sil</button>
+          <p id="ses-mesaj" class="mesaj"></p>
+          <p class="ipucu">Piyano sesleri: Salamander Grand Piano V3, Alexander Holm, CC BY 3.0 (creativecommons.org/licenses/by/3.0). Bir kez internetle indirilir, sonra internetsiz çalışır. İndirilmediyse sentez ses kullanılır.</p>
+        </div>
+        <div class="kart">
+          <div class="satir"><span>Sürüm</span><b id="ay-surum"></b></div>
+          <div class="satir"><span>Bağlantı</span><b id="ay-baglanti"></b></div>
+          <div class="satir"><span>Çevrimdışı kullanıma hazır</span><b id="ay-cevrimdisi"></b></div>
+          <div class="satir"><span>Kalıcı depolama</span><b id="ay-depolama"></b></div>
+          <div class="satir"><span>Kullanılan alan</span><b id="ay-alan"></b></div>
+          <div class="satir"><span>Adres</span><b id="ay-adres"></b></div>
+        </div>
+        <div class="kart">
+          <button id="btn-kalici" type="button">Kalıcı depolamayı iste</button>
+          <button id="btn-yukle" type="button" hidden>Uygulamayı yükle</button>
+          <button id="btn-temizle" type="button" class="uyari">Önbelleği temizle ve yenile</button>
+          <p id="ay-mesaj" class="mesaj"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="eser.js"></script>
+  <script src="porte.js"></script>
+  <script src="piyano-ses.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

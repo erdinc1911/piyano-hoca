@@ -1,0 +1,517 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  background: #1b1b2f;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- ÜST ÇUBUK VE SEKMELER ---------- */
+
+header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+}
+
+header h1 {
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+#sekmeler {
+  display: flex;
+  gap: 8px;
+}
+
+.sekme-dugme {
+  background: #2a2a47;
+  color: #cfd6ee;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.sekme-dugme.aktif {
+  background: #3d5a99;
+  color: #fff;
+  font-weight: 600;
+}
+
+#durum {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+main {
+  flex: 1;
+  min-height: 0;
+}
+
+.sekme {
+  display: none;
+  height: 100%;
+}
+
+.sekme.aktif {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- KÜTÜPHANE VE AYARLAR SAYFALARI ---------- */
+
+.sayfa {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px 20px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.sayfa h2 {
+  font-size: 1.4rem;
+  margin: 8px 0 14px;
+}
+
+.kart {
+  background: #25253f;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.kart p {
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.kart .buyuk {
+  font-size: 1.1rem;
+  opacity: 1;
+}
+
+.kart ul {
+  margin-left: 20px;
+  opacity: 0.85;
+}
+
+.satir {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #34345a;
+}
+
+.satir:last-child {
+  border-bottom: none;
+}
+
+.satir b {
+  text-align: right;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.kart button {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  background: #3d5a99;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 1rem;
+  touch-action: manipulation;
+}
+
+.kart button:active {
+  background: #5577cc;
+}
+
+.kart button.uyari {
+  background: #8a3b3b;
+}
+
+.kart button.pasif-dugme,
+.kart button:disabled {
+  background: #3a3a55;
+  color: #8a8fa8;
+}
+
+.kart button[hidden] {
+  display: none;
+}
+
+.mesaj {
+  min-height: 1.2em;
+  font-size: 0.9rem;
+}
+
+.ipucu {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.ilerleme {
+  height: 10px;
+  background: #34345a;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.ilerleme[hidden] {
+  display: none;
+}
+
+#ses-ilerleme-dolgu {
+  height: 100%;
+  width: 0;
+  background: #2f7d4f;
+  transition: width 0.2s;
+}
+
+/* ---------- ÇAL SEKMESİ: ESER ÇUBUĞU ---------- */
+
+#eser-cubugu {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 6px;
+}
+
+#eser-baslik {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.el-dugme {
+  background: #2a2a47;
+  color: #8a8fa8;
+  border: 2px solid #3a3a55;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 1rem;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.el-dugme.sag.aktif {
+  background: #1d5fbf;
+  border-color: #5b95e6;
+  color: #fff;
+  font-weight: 600;
+}
+
+.el-dugme.sol.aktif {
+  background: #c2620a;
+  border-color: #eb9a4a;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- ÇAL SEKMESİ: ÇALMA ÇUBUĞU ---------- */
+
+#calma-cubugu {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 2px 12px 8px;
+}
+
+.cal-dugme {
+  background: #2f7d4f;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 1rem;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.cal-dugme.duraklat {
+  background: #b8860b;
+}
+
+#btn-durdur {
+  background: #8a3b3b;
+}
+
+.cal-dugme:disabled {
+  background: #3a3a55;
+  color: #8a8fa8;
+}
+
+#dongu {
+  background: #2a2a47;
+  color: #8a8fa8;
+  border: 2px solid #3a3a55;
+}
+
+#dongu.aktif {
+  background: #6b3fa0;
+  border-color: #a77bdc;
+  color: #fff;
+  font-weight: 600;
+}
+
+.grup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grup .etiket {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.grup .sayi {
+  min-width: 22px;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.grup .kucuk {
+  width: 42px;
+  padding: 8px 0;
+  font-size: 1.3rem;
+  line-height: 1;
+  background: #3d5a99;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  touch-action: manipulation;
+}
+
+.grup .kucuk:active {
+  background: #5577cc;
+}
+
+.grup .kucuk.genis {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+}
+
+.grup .kucuk:disabled {
+  opacity: 0.4;
+}
+
+#tempo-kaydirici {
+  width: 140px;
+  height: 32px;
+}
+
+#tempo-yazi {
+  min-width: 110px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+#olcu-gosterge {
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 70px;
+}
+
+/* ---------- ÇAL SEKMESİ: PORTE ---------- */
+
+#porte-kutu {
+  flex: 1;
+  min-height: 150px;
+  margin: 0 8px 6px;
+  overflow: auto;
+  background: #fdfcf6;
+  border-radius: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+#porte-kutu svg {
+  display: block;
+}
+
+.nota {
+  cursor: pointer;
+}
+
+.nota.el-sag {
+  color: #1d5fbf;
+}
+
+.nota.el-sol {
+  color: #c2620a;
+}
+
+.nota .vurgu {
+  fill: none;
+  pointer-events: none;
+}
+
+.nota.calan .vurgu {
+  fill: rgba(34, 197, 94, 0.55);
+}
+
+/* ---------- ÇAL SEKMESİ: KLAVYE ---------- */
+
+#nota-bilgi {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  min-height: 34px;
+}
+
+#gezinme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+}
+
+#gezinme button {
+  background: #3d5a99;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+#gezinme button:active {
+  background: #5577cc;
+}
+
+#kaydirici {
+  flex: 1;
+  min-width: 120px;
+  height: 36px;
+}
+
+#boyut-grup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#boyut-grup button {
+  width: 52px;
+  padding: 10px 0;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+#boyut-yazi {
+  min-width: 76px;
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+#gorunen {
+  min-width: 90px;
+  text-align: right;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+#kaydirma {
+  flex: none;
+  height: 34%;
+  min-height: 170px;
+  margin: 0 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #000;
+  border-radius: 6px;
+}
+
+#klavye {
+  position: relative;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.beyaz {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #fafafa;
+  border: 1px solid #333;
+  border-radius: 0 0 6px 6px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  color: #555;
+  font-size: 0.8rem;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.siyah {
+  position: absolute;
+  top: 0;
+  height: 60%;
+  background: #111;
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+  touch-action: none;
+}
+
+/* Porteden seçilen notanın klavyedeki işareti */
+.beyaz.isaret-sag { background: #a9c9f5; }
+.beyaz.isaret-sol { background: #f5cfa0; }
+.siyah.isaret-sag { background: #1d5fbf; }
+.siyah.isaret-sol { background: #c2620a; }
+
+/* Otomatik çalma sırasında çalan tuşlar */
+.beyaz.cal-sag { background: #6fa8ff; }
+.beyaz.cal-sol { background: #ffb15c; }
+.siyah.cal-sag { background: #2f7be0; }
+.siyah.cal-sol { background: #e07a1a; }
+
+/* Parmakla basılı tuş (en üstte) */
+.beyaz.basili { background: #8ec5ff; }
+.siyah.basili { background: #3d7fc4; }

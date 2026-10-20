@@ -1,0 +1,13 @@
+{
+  "name": "Piyano Hoca",
+  "short_name": "Piyano Hoca",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1b1b2f",
+  "theme_color": "#1b1b2f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
