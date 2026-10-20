@@ -20,6 +20,8 @@
 </head>
 <body>
 <h1>Nota Okuma Testi</h1>
+<div class="kutu"><h2>Durum (tanı)</h2><pre id="tani">kontrol ediliyor…</pre>
+<button id="sifirla">Sıfırla ve yeniden yükle</button></div>
 
 <div class="kutu">
   <h2>1) Model dosyalarını indir (bir kez)</h2>
@@ -98,7 +100,43 @@ if ('serviceWorker' in navigator) {
   }).catch(() => {});
 }
 
+
+async function taniYaz() {
+  const t = [];
+  t.push('Güvenli bağlam: ' + (self.isSecureContext ? 'evet' : 'HAYIR'));
+  t.push('crossOriginIsolated: ' + (self.crossOriginIsolated ? 'EVET' : 'hayır'));
+  t.push('SharedArrayBuffer: ' + (typeof SharedArrayBuffer !== 'undefined' ? 'var' : 'yok'));
+  t.push('Sayfa adresi: ' + location.href);
+  if ('serviceWorker' in navigator) {
+    try {
+      const k = await navigator.serviceWorker.getRegistrations();
+      t.push('Servis işçisi kaydı: ' + k.length + (k[0] ? ' · kapsam ' + k[0].scope + ' · durum ' + (k[0].active ? 'etkin' : k[0].installing ? 'kuruluyor' : k[0].waiting ? 'bekliyor' : '?') : ''));
+    } catch (e) { t.push('Kayıt okunamadı: ' + e.message); }
+    t.push('Servis işçisi bu sayfayı yönetiyor: ' + (navigator.serviceWorker.controller ? 'evet' : 'HAYIR'));
+  } else {
+    t.push('Servis işçisi desteği: YOK');
+  }
+  try {
+    const r = await fetch(location.href, { cache: 'no-store' });
+    t.push('Sayfanın başlıkları → COOP: ' + (r.headers.get('cross-origin-opener-policy') || 'yok') +
+           ' · COEP: ' + (r.headers.get('cross-origin-embedder-policy') || 'yok'));
+  } catch (e) { t.push('Başlıklar okunamadı: ' + e.message); }
+  const el = document.getElementById('tani');
+  if (el) el.textContent = t.join('\n');
+  try { localStorage.setItem('omrTani', t.join('\n')); } catch (e) {}
+}
+setTimeout(taniYaz, 1500);
+document.getElementById('sifirla').addEventListener('click', async () => {
+  try { sessionStorage.removeItem('omrYenilendi'); } catch (e) {}
+  try {
+    const k = await navigator.serviceWorker.getRegistrations();
+    for (const x of k) await x.unregister();
+  } catch (e) {}
+  location.reload();
+});
+
 function cihazBilgisi() {
+  try { yaz('TANI:\n' + (localStorage.getItem('omrTani') || '')); } catch (e) {}
   yaz('Tarayıcı: ' + navigator.userAgent);
   yaz('Çekirdek: ' + navigator.hardwareConcurrency + ' · Bellek (yaklaşık, GB): ' + (navigator.deviceMemory || '?'));
   yaz('Çok iş parçacığı (crossOriginIsolated): ' + (self.crossOriginIsolated ? 'evet' : 'hayır') +
