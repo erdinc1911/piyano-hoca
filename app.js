@@ -1,4 +1,4 @@
-const SURUM = 'Aşama 11';
+const SURUM = 'Aşama 13';
 
 const ILK_MIDI = 21;  // La0
 const SON_MIDI = 108; // Do8
@@ -231,8 +231,47 @@ function kisaAd(midi) {
 // Her parmak (pointerId) şu an hangi tuşun üzerinde olduğunu hatırlar.
 // Aynı tuşa birden fazla parmak basarsa, son parmak kalkana kadar nota sürer.
 
+const hariciBasili = new Set();   // MIDI klavye ve mikrofondan gelen basılı notalar
 const parmaklar = new Map();   // pointerId -> midi (veya null)
 const tusSahipleri = {};       // midi -> Set(pointerId)
+
+// Bilgi yazısını el rengine göre boyayarak yazar: parcalar = [{ yazi, el }]
+function bilgiRenkli(onek, parcalar, sonek) {
+  const kap = document.getElementById('nota-bilgi');
+  kap.replaceChildren();
+  if (onek) kap.appendChild(document.createTextNode(onek));
+  parcalar.forEach((p, i) => {
+    if (i > 0) kap.appendChild(document.createTextNode(' · '));
+    const s = document.createElement('span');
+    s.className = 'bilgi-' + p.el;
+    s.textContent = p.yazi;
+    kap.appendChild(s);
+  });
+  if (sonek) kap.appendChild(document.createTextNode(sonek));
+}
+
+// Basılan tuşun hangi ele ait olduğunu bulur: eserde yalnızca bir elde varsa o el,
+// yoksa 60'ın (orta Do) üstü sağ, altı sol
+function basiliEl(midi) {
+  let sag = false;
+  let sol = false;
+  const liste = aktifEser.notalar;
+  for (let i = 0; i < liste.length; i++) {
+    if (liste[i].midi !== midi) continue;
+    if (liste[i].el === 'sag') sag = true;
+    else sol = true;
+    if (sag && sol) break;
+  }
+  if (sag && !sol) return 'sag';
+  if (sol && !sag) return 'sol';
+  return midi >= 60 ? 'sag' : 'sol';
+}
+
+function basiliIsaretle(midi, acik) {
+  const c = tuslar[midi].el.classList;
+  c.remove('basili', 'basili-sag', 'basili-sol');
+  if (acik) c.add('basili', 'basili-' + basiliEl(midi));
+}
 
 function tusBas(midi, id) {
   if (!tusSahipleri[midi]) tusSahipleri[midi] = new Set();
@@ -240,11 +279,24 @@ function tusBas(midi, id) {
   const ilk = kume.size === 0;
   kume.add(id);
   if (ilk) {
-    tuslar[midi].el.classList.add('basili');
+    basiliIsaretle(midi, true);
     notaCal(midi);
     if (window.PERF) PERF.tusBasildi(midi, performance.now());
+    if (window.KAYIT) KAYIT.nota(midi, performance.now(), true);
   }
-  document.getElementById('nota-bilgi').textContent = notaAdi(midi);
+  basiliNotalariYaz();
+}
+
+// Basılı olan bütün tuşların adlarını gösterir (en fazla 6)
+function basiliNotalariYaz() {
+  const kume = new Set(hariciBasili);
+  Object.keys(tusSahipleri).forEach((m) => {
+    if (tusSahipleri[m].size > 0) kume.add(Number(m));
+  });
+  const liste = Array.from(kume).sort((x, y) => x - y);
+  if (!liste.length) return;
+  bilgiRenkli('', liste.slice(0, 6).map((m) => ({ yazi: notaAdi(m), el: basiliEl(m) })),
+    liste.length > 6 ? ' …' : '');
 }
 
 function tusBirak(midi, id) {
@@ -252,8 +304,9 @@ function tusBirak(midi, id) {
   if (!kume) return;
   kume.delete(id);
   if (kume.size === 0) {
-    tuslar[midi].el.classList.remove('basili');
+    basiliIsaretle(midi, false);
     notaBirak(midi);
+    if (window.KAYIT) KAYIT.nota(midi, performance.now(), false);
   }
 }
 
@@ -366,6 +419,7 @@ function gezinmeKur() {
   const kucultBtn = document.getElementById('kucult');
   const buyutBtn = document.getElementById('buyut');
   let kayitliKonum = 0;
+  let otoSigdir = false;
 
   function sliderAyarla() {
     kaydirici.max = Math.max(kutu.scrollWidth - kutu.clientWidth, 1);
@@ -396,6 +450,7 @@ function gezinmeKur() {
 
   function boyutDegistir(yeni) {
     yeni = Math.min(Math.max(yeni, MIN_BOYUT), MAX_BOYUT);
+    otoSigdir = false;
     if (yeni === beyazGenislik) return;
     // Ekranın ortasındaki konumu koru
     const merkez = (kutu.scrollLeft + kutu.clientWidth / 2) / beyazGenislik;
@@ -430,6 +485,41 @@ function gezinmeKur() {
 
   window.addEventListener('resize', sliderAyarla);
 
+  // Klavyeyi eserin nota aralığına (tam oktavlar) sığdırır: kaydırmaya gerek kalmaz
+  function sigdir(eser) {
+    const w = kutu.clientWidth;
+    if (!w) return;
+    let alt = null;
+    let ust = null;
+    eser.notalar.forEach((n) => {
+      if (alt === null || n.midi < alt) alt = n.midi;
+      if (ust === null || n.midi > ust) ust = n.midi;
+    });
+    if (alt === null) { alt = 48; ust = 83; }
+    let bas = Math.max(alt - (alt % 12), 24);          // Do'dan başla
+    let son = Math.min(ust - (ust % 12) + 11, 107);    // Si'de bitir
+    // En az 2 oktav göster
+    while ((son - bas + 1) / 12 < 2) {
+      if (son + 12 <= 107) son += 12;
+      else if (bas - 12 >= 24) bas -= 12;
+      else break;
+    }
+    const beyazSayisi = ((son - bas + 1) / 12) * 7;
+    beyazGenislik = Math.min(Math.max(Math.floor(w / beyazSayisi), MIN_BOYUT), MAX_BOYUT);
+    yerlesimUygula();
+    const bosluk = Math.max(w - beyazSayisi * beyazGenislik, 0);
+    kutu.scrollLeft = Math.max(tuslar[bas].sol - bosluk / 2, 0);
+    otoSigdir = true;
+    sliderAyarla();
+    gorunenYaz();
+    boyutYaz();
+    kayanYenile();
+  }
+
+  window.addEventListener('resize', () => {
+    if (otoSigdir) sigdir(aktifEser);
+  });
+
   // Sekme değişince kaydırma konumunu sakla / geri getir; tuşu görünür yap
   klavyeKontrol = {
     sakla() {
@@ -441,6 +531,7 @@ function gezinmeKur() {
       sliderAyarla();
       gorunenYaz();
     },
+    sigdir: sigdir,
     goster(midi) {
       const t = tuslar[midi];
       if (!t || kutu.clientWidth === 0) return;
@@ -535,8 +626,7 @@ function notaSec(n) {
   }
   if (klavyeKontrol) klavyeKontrol.goster(n.midi);
 
-  document.getElementById('nota-bilgi').textContent =
-    notaAdi(n.midi) + ' · ' + (n.el === 'sag' ? 'Sağ el' : 'Sol el');
+  bilgiRenkli('', [{ yazi: notaAdi(n.midi) + ' · ' + (n.el === 'sag' ? 'Sağ el' : 'Sol el'), el: n.el }], '');
 
   // Notayı kısa çal (parmakla basılı tutulan tuşu kesme)
   notaCal(n.midi);
@@ -608,6 +698,7 @@ async function eserAc(eser, kayitId) {
   kayanYenile();
   document.getElementById('nota-bilgi').textContent = 'Bir tuşa ya da notaya dokun';
   sekmeGoster('cal');
+  if (klavyeKontrol) klavyeKontrol.sigdir(eser);
   if (window.DUZ) DUZ.eserDegisti();
 }
 window.eserAc = eserAc;
@@ -784,8 +875,7 @@ function vurguUygula(calan) {
   });
 
   if (calan.length > 0) {
-    document.getElementById('nota-bilgi').textContent =
-      'Çalıyor: ' + calan.map((o) => kisaAd(o.midi)).join(' · ');
+    bilgiRenkli('Çalıyor: ', calan.map((o) => ({ yazi: kisaAd(o.midi), el: o.el })), '');
     const ilk = calan.find((o) => o.el === 'sag') || calan[0];
     if (klavyeKontrol) klavyeKontrol.goster(ilk.midi);
   }
@@ -1240,6 +1330,7 @@ function performansKur() {
     porteCizgi: porteCizgisiniKoy,
     porteTakip: porteyiTakipEt,
     tusEl: (midi) => (tuslar[midi] ? tuslar[midi].el : null),
+    mikrofonMu: () => !!(window.GIRIS && GIRIS.mikrofonModu()),
     eserAdi: () => aktifEser.baslik,
     calmaDurdur: () => calmaDurdur(),
     bolumAyarla: (bas, son) => {
@@ -1567,6 +1658,108 @@ function servisCalisaniKaydet() {
   });
 }
 
+/* ---------- GİRİŞ (MIDI / MİKROFON) VE KAYIT ---------- */
+// MIDI ve mikrofon mantığı giris.js, kayıt mantığı kayit.js içindedir; burada yalnızca bağlantılar verilir.
+
+const hariciSesli = new Set();   // uygulamanın sesiyle çalınan harici notalar
+
+function girisBas(midi, an, kaynak) {
+  if (!tuslar[midi]) return;
+  hariciBasili.add(midi);
+  basiliIsaretle(midi, true);
+  // MIDI'de piyanonun kendi sesi varsa uygulama susar; mikrofonda hiç çalmaz (yankı olmasın)
+  if (kaynak === 'midi' && window.GIRIS && GIRIS.midiSesi()) {
+    notaCal(midi);
+    hariciSesli.add(midi);
+  }
+  if (window.PERF) PERF.tusBasildi(midi, an);
+  if (window.KAYIT) KAYIT.nota(midi, an, true);
+  basiliNotalariYaz();
+}
+
+function girisBirak(midi, an, kaynak) {
+  if (!tuslar[midi]) return;
+  hariciBasili.delete(midi);
+  const parmakVar = tusSahipleri[midi] && tusSahipleri[midi].size > 0;
+  if (!parmakVar) basiliIsaretle(midi, false);
+  if (hariciSesli.has(midi)) {
+    hariciSesli.delete(midi);
+    if (!parmakVar) notaBirak(midi);
+  }
+  if (window.KAYIT) KAYIT.nota(midi, an, false);
+}
+
+function girisKur() {
+  if (!window.GIRIS) return;
+  GIRIS.kur({
+    bas: girisBas,
+    birak: girisBirak,
+    degisti: () => {
+      Array.from(hariciBasili).forEach((m) => girisBirak(m, performance.now(), 'midi'));
+    }
+  });
+}
+
+function kayitKur() {
+  if (!window.KAYIT) return;
+  KAYIT.kur({
+    bosEser: (ad, pay, payda, tempo, sayi) => window.NOTA_IC.bosEser(ad, pay, payda, tempo, sayi),
+    kaydet: (eser) => window.notaKayitOlustur(eser),
+    ac: (eser, id) => {
+      if (window.eserListesiYenile) window.eserListesiYenile();
+      window.eserAc(eser, id);
+    },
+    mesgul: () => {
+      if (window.PERF && PERF.sahne()) return 'Önce Dene modunu kapat.';
+      calmaDurdur();
+      return null;
+    },
+    baglam: () => {
+      sesBaslat();
+      return ctx;
+    },
+    mikrofonMu: () => !!(window.GIRIS && GIRIS.mikrofonModu()),
+    mesaj: (yazi) => {
+      document.getElementById('nota-bilgi').textContent = yazi;
+    }
+  });
+}
+
+/* ---------- MENÜ ÇEKMECESİ VE GEÇİCİ BİLGİ YAZISI ---------- */
+
+function cekmeceKur() {
+  const cek = document.getElementById('cekmece');
+  const perde = document.getElementById('cekmece-perde');
+  const ac = (acik) => {
+    cek.classList.toggle('acik', acik);
+    cek.setAttribute('aria-hidden', acik ? 'false' : 'true');
+    perde.hidden = !acik;
+  };
+  document.getElementById('kl-sigdir').addEventListener('click', () => {
+    if (klavyeKontrol) klavyeKontrol.sigdir(aktifEser);
+    ac(false);
+  });
+  document.getElementById('cekmece-ac').addEventListener('click', () => ac(!cek.classList.contains('acik')));
+  document.getElementById('cekmece-kapat').addEventListener('click', () => ac(false));
+  perde.addEventListener('click', () => ac(false));
+  // Dene ve Düzenle başlayınca menü kendiliğinden kapanır
+  ['btn-dene', 'btn-duzenle', 'ky-baslat'].forEach((id) => {
+    document.getElementById(id).addEventListener('click', () => ac(false));
+  });
+
+  // Bilgi yazısı başlığın üstünde kısa süre görünür, sonra başlığa geri döner
+  const bilgi = document.getElementById('nota-bilgi');
+  const alan = document.getElementById('baslik-alan');
+  let zaman = null;
+  new MutationObserver(() => {
+    const t = bilgi.textContent;
+    if (!t || t === 'Bir tuşa ya da notaya dokun') return;
+    alan.classList.add('bilgi-var');
+    clearTimeout(zaman);
+    zaman = setTimeout(() => alan.classList.remove('bilgi-var'), 2600);
+  }).observe(bilgi, { childList: true, characterData: true, subtree: true });
+}
+
 /* ---------- BAŞLAT ---------- */
 
 window.addEventListener('resize', porteOlcekle);
@@ -1574,16 +1767,20 @@ window.addEventListener('online', durumGuncelle);
 window.addEventListener('offline', durumGuncelle);
 
 klavyeOlustur();
+cekmeceKur();
 dokunmaKur();
 gezinmeKur();
 eserBasligiYaz();
 elDugmeleriKur();
 porteYenile();
+if (klavyeKontrol) klavyeKontrol.sigdir(aktifEser);
 calmaKur();
 panelDuzeniKur();
 kayanKur();
 performansKur();
 duzenleKur();
+girisKur();
+kayitKur();
 kutuphaneKur();
 sekmeleriKur();
 sesKartiKur();

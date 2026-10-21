@@ -14,7 +14,7 @@
 
   const ILK_MIDI = 21;
   const SON_MIDI = 108;
-  const MAKS_NOTA = 3000;
+  const MAKS_NOTA = 200000; // pratikte sınır yok (yalnızca bozuk dosyalara karşı üst sınır)
   const MAKS_DOSYA = 20 * 1024 * 1024;
   const UZANTILAR = ['musicxml', 'xml', 'mxl', 'mid', 'midi'];
   const ADIM_YARIM = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };

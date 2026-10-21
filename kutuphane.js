@@ -601,14 +601,7 @@
       }
     });
 
-    const oku = eleman('button', '', '🎼 Notayı oku');
-    oku.type = 'button';
-    oku.addEventListener('click', () => {
-      if (window.OMRUI) window.OMRUI.ac(k);
-      else kutMesaj('Nota okuma modülü yüklenemedi.');
-    });
-
-    (nota ? [ac, adDegistir, yedekle, sil] : [ac, oku, adDegistir, yedekle, indir, sil])
+    (nota ? [ac, adDegistir, yedekle, sil] : [ac, adDegistir, yedekle, indir, sil])
       .forEach((b) => islem.appendChild(b));
     satir.appendChild(islem);
     return satir;
@@ -1105,11 +1098,4 @@
   window.notaKaydet = notaKaydet;
   window.eserListesiYenile = eserListesiYenile;
   window.pdfKartiYenile = pdfKartiYenile;
-  window.KUT = {
-    pdfHazirla: pdfHazirla,
-    pdfKutu: pdfKutu,
-    notaKayitOlustur: notaKayitOlustur,
-    notaAc: notaAc,
-    eserListesiYenile: eserListesiYenile
-  };
 })();
