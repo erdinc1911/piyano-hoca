@@ -326,9 +326,80 @@
     });
   }
 
+  /* ---------- ÇALINABİLİR ESERLER (MusicXML, MIDI, düzenlenen eserler) ---------- */
+
+  const NOTA_UZANTILARI = ['musicxml', 'xml', 'mxl', 'mid', 'midi'];
+
+  // Eser nesnesini kütüphaneye yeni kayıt olarak ekler, kayıt kimliğini döndürür
+  async function notaKayitOlustur(eser) {
+    const blob = new Blob([JSON.stringify(eser)], { type: 'application/json' });
+    const kayit = {
+      id: yeniKimlik(),
+      surum: 1,
+      ad: String(eser.baslik || 'Adsız').slice(0, 120),
+      tur: 'nota',
+      mime: 'application/json',
+      sayfa: 1,
+      boyut: blob.size,
+      eklenme: Date.now(),
+      notaSayisi: eser.notalar.length,
+      olcuSayisi: eser.olcuSayisi,
+      tempo: eser.tempo,
+      blob: blob
+    };
+    try {
+      await dbIslem('readwrite', (s) => s.put(kayit));
+    } catch (e) {
+      if (e && e.name === 'QuotaExceededError') throw new Error('cihazda yeterli yer yok');
+      throw e;
+    }
+    return kayit.id;
+  }
+
+  // Düzenlenen eseri mevcut kayda geri yazar
+  async function notaKaydet(id, eser) {
+    const kayit = await dbIslem('readonly', (s) => s.get(id));
+    if (!kayit) throw new Error('kütüphane kaydı bulunamadı');
+    const blob = new Blob([JSON.stringify(eser)], { type: 'application/json' });
+    kayit.blob = blob;
+    kayit.boyut = blob.size;
+    kayit.notaSayisi = eser.notalar.length;
+    kayit.olcuSayisi = eser.olcuSayisi;
+    kayit.tempo = eser.tempo;
+    await dbIslem('readwrite', (s) => s.put(kayit));
+  }
+
+  async function notaAc(id) {
+    try {
+      const kayit = await dbIslem('readonly', (s) => s.get(id));
+      if (!kayit) throw new Error('eser bulunamadı');
+      const eser = JSON.parse(await kayit.blob.text());
+      window.NOTA_IC.dogrula(eser);
+      eser.baslik = kayit.ad;
+      if (!window.eserAc) throw new Error('çalma ekranı hazır değil');
+      window.eserAc(eser, kayit.id);
+    } catch (e) {
+      kutMesaj('Eser açılamadı: ' + hataYazi(e));
+    }
+  }
+
+  async function notaDosyasiEkle(dosya) {
+    if (!window.NOTA_IC) throw new Error('içe aktarma modülü yüklenemedi');
+    const sonuc = await window.NOTA_IC.dosyadanEser(dosya);
+    await notaKayitOlustur(sonuc.eser);
+    return sonuc.uyari;
+  }
+
   async function dosyaEkle(dosya) {
     const tamAd = dosya.name || 'Adsız';
     const uzanti = tamAd.indexOf('.') >= 0 ? tamAd.split('.').pop().toLowerCase() : '';
+    if (NOTA_UZANTILARI.indexOf(uzanti) >= 0) {
+      try {
+        return await notaDosyasiEkle(dosya);
+      } catch (e) {
+        throw new Error('"' + tamAd + '": ' + hataYazi(e));
+      }
+    }
     let tur = null;
     let mime = '';
     if (uzanti === 'pdf') {
@@ -341,7 +412,7 @@
       tur = 'resim';
       mime = 'image/png';
     } else {
-      throw new Error('"' + tamAd + '": yalnızca PDF, JPG, JPEG ve PNG eklenebilir');
+      throw new Error('"' + tamAd + '": yalnızca PDF, JPG, PNG, MusicXML (.musicxml, .xml, .mxl) ve MIDI (.mid) eklenebilir');
     }
     if (dosya.size === 0) throw new Error('"' + tamAd + '": dosya boş');
     if (dosya.size > MAKS_BOYUT) {
@@ -406,11 +477,13 @@
       } catch (e) {}
 
       const hatalar = [];
+      const notlar = [];
       let eklenen = 0;
       for (let i = 0; i < dosyalar.length; i++) {
         kutMesaj('Ekleniyor: ' + dosyalar[i].name + ' (' + (i + 1) + '/' + dosyalar.length + ')');
         try {
-          await dosyaEkle(dosyalar[i]);
+          const uyari = await dosyaEkle(dosyalar[i]);
+          if (uyari && uyari.length) notlar.push(dosyalar[i].name + ': ' + uyari.join(' '));
           eklenen++;
         } catch (e) {
           hatalar.push(hataYazi(e));
@@ -418,6 +491,7 @@
       }
       let ozet = eklenen + ' eser eklendi.';
       if (hatalar.length) ozet += ' Eklenemeyenler: ' + hatalar.join(' | ');
+      if (notlar.length) ozet += ' Dikkat: ' + notlar.join(' | ');
       kutMesaj(ozet);
       await eserListesiYenile();
     });
@@ -448,18 +522,21 @@
   function eserSatiri(k) {
     const satir = eleman('div', 'eser-satir');
     const bilgi = eleman('div', 'eser-bilgi');
-    bilgi.appendChild(eleman('b', '', (k.tur === 'pdf' ? '📄 ' : '🖼 ') + k.ad));
-    const meta =
-      (k.tur === 'pdf' ? k.sayfa + ' sayfa · ' : 'Fotoğraf · ') +
-      boyutYaz(k.boyut) + ' · ' + tarihYaz(k.eklenme);
+    const nota = k.tur === 'nota';
+    bilgi.appendChild(eleman('b', '', (nota ? '🎼 ' : k.tur === 'pdf' ? '📄 ' : '🖼 ') + k.ad));
+    const meta = nota
+      ? (k.notaSayisi || '?') + ' nota · ' + (k.olcuSayisi || '?') + ' ölçü · ♩ = ' +
+        (k.tempo || '?') + ' · ' + tarihYaz(k.eklenme)
+      : (k.tur === 'pdf' ? k.sayfa + ' sayfa · ' : 'Fotoğraf · ') +
+        boyutYaz(k.boyut) + ' · ' + tarihYaz(k.eklenme);
     bilgi.appendChild(eleman('span', '', meta));
     satir.appendChild(bilgi);
 
     const islem = eleman('div', 'eser-islem');
 
-    const ac = eleman('button', 'birincil', 'Aç');
+    const ac = eleman('button', 'birincil', nota ? 'Çal / düzenle' : 'Aç');
     ac.type = 'button';
-    ac.addEventListener('click', () => gorunumAc(k.id));
+    ac.addEventListener('click', () => (nota ? notaAc(k.id) : gorunumAc(k.id)));
 
     const adDegistir = eleman('button', '', 'Adı değiştir');
     adDegistir.type = 'button';
@@ -524,7 +601,15 @@
       }
     });
 
-    [ac, adDegistir, yedekle, indir, sil].forEach((b) => islem.appendChild(b));
+    const oku = eleman('button', '', '🎼 Notayı oku');
+    oku.type = 'button';
+    oku.addEventListener('click', () => {
+      if (window.OMRUI) window.OMRUI.ac(k);
+      else kutMesaj('Nota okuma modülü yüklenemedi.');
+    });
+
+    (nota ? [ac, adDegistir, yedekle, sil] : [ac, oku, adDegistir, yedekle, indir, sil])
+      .forEach((b) => islem.appendChild(b));
     satir.appendChild(islem);
     return satir;
   }
@@ -554,23 +639,7 @@
 
   /* ---------- YEDEKLEME VE GERİ YÜKLEME ---------- */
 
-  // Acode'un yerleşik tarayıcısı gibi "WebView" tarayıcılar blob indirmesini
-  // yapamaz ve kapanabilir. Bunları tanıyıp indirmeyi hiç denemeyiz.
-  function yerlesikTarayici() {
-    try {
-      return /;\s*wv\)/.test(navigator.userAgent) || /\bwv\b/.test(navigator.userAgent);
-    } catch (e) {
-      return false;
-    }
-  }
-
   function dosyaIndir(blob, ad) {
-    if (yerlesikTarayici()) {
-      throw new Error(
-        'Bu yerleşik tarayıcı (Acode) dosya indirmeyi desteklemiyor ve kapanabilir. ' +
-        'Bu işlemi Brave\'de ya da yüklü uygulamada yap.'
-      );
-    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -594,7 +663,10 @@
         mime: k.mime,
         sayfa: k.sayfa,
         boyut: k.blob.size,
-        eklenme: k.eklenme
+        eklenme: k.eklenme,
+        notaSayisi: k.notaSayisi,
+        olcuSayisi: k.olcuSayisi,
+        tempo: k.tempo
       }))
     };
     const kodla = new TextEncoder();
@@ -636,8 +708,9 @@
       const gecerli =
         m && typeof m.id === 'string' && m.id.length > 0 && m.id.length < 80 &&
         typeof m.ad === 'string' &&
-        (m.tur === 'pdf' || m.tur === 'resim') &&
-        (m.mime === 'application/pdf' || m.mime === 'image/jpeg' || m.mime === 'image/png') &&
+        (m.tur === 'pdf' || m.tur === 'resim' || m.tur === 'nota') &&
+        (m.mime === 'application/pdf' || m.mime === 'image/jpeg' || m.mime === 'image/png' ||
+          m.mime === 'application/json') &&
         Number.isInteger(m.boyut) && m.boyut > 0 && m.boyut <= MAKS_BOYUT;
       if (!gecerli) throw new Error('Yedek dosyası bozuk (eser bilgisi geçersiz)');
       if (ofset + m.boyut > dosya.size) throw new Error('Yedek dosyası eksik ya da yarım indirilmiş');
@@ -649,7 +722,10 @@
           mime: m.mime,
           sayfa: Number.isInteger(m.sayfa) && m.sayfa >= 1 && m.sayfa <= 5000 ? m.sayfa : 1,
           boyut: m.boyut,
-          eklenme: Number.isFinite(m.eklenme) ? m.eklenme : Date.now()
+          eklenme: Number.isFinite(m.eklenme) ? m.eklenme : Date.now(),
+          notaSayisi: Number.isInteger(m.notaSayisi) ? m.notaSayisi : undefined,
+          olcuSayisi: Number.isInteger(m.olcuSayisi) ? m.olcuSayisi : undefined,
+          tempo: Number.isFinite(m.tempo) ? m.tempo : undefined
         },
         blob: dosya.slice(ofset, ofset + m.boyut, m.mime)
       });
@@ -711,6 +787,9 @@
               sayfa: o.meta.sayfa,
               boyut: o.meta.boyut,
               eklenme: o.meta.eklenme,
+              notaSayisi: o.meta.notaSayisi,
+              olcuSayisi: o.meta.olcuSayisi,
+              tempo: o.meta.tempo,
               blob: o.blob
             })
           );
@@ -975,8 +1054,46 @@
 
   /* ---------- BAŞLAT ---------- */
 
+  function bosEserKur() {
+    $('btn-bos-eser').addEventListener('click', async () => {
+      const ad = prompt('Yeni eserin adı:', 'Yeni eser');
+      if (ad === null) return;
+      const olcuYazi = prompt('Ölçü (örnek: 4/4, 3/4, 6/8):', '4/4');
+      if (olcuYazi === null) return;
+      const m = /^\s*(\d+)\s*\/\s*(\d+)\s*$/.exec(olcuYazi);
+      if (!m || [2, 3, 4, 5, 6, 7, 9, 12].indexOf(Number(m[1])) < 0 || [2, 4, 8, 16].indexOf(Number(m[2])) < 0) {
+        kutMesaj('Ölçü geçersiz. Örnek: 4/4, 3/4, 2/4, 6/8, 12/8');
+        return;
+      }
+      const tempoYazi = prompt('Tempo (♩ = dakikadaki vuruş sayısı):', '90');
+      if (tempoYazi === null) return;
+      const tempo = Number(tempoYazi);
+      if (!(tempo >= 25 && tempo <= 300)) {
+        kutMesaj('Tempo 25 ile 300 arasında olmalı.');
+        return;
+      }
+      const sayiYazi = prompt('Kaç ölçü olsun? (sonradan eklenebilir)', '8');
+      if (sayiYazi === null) return;
+      const sayi = parseInt(sayiYazi, 10);
+      if (!(sayi >= 1 && sayi <= 200)) {
+        kutMesaj('Ölçü sayısı 1 ile 200 arasında olmalı.');
+        return;
+      }
+      try {
+        const eser = window.NOTA_IC.bosEser(ad.trim().slice(0, 120) || 'Yeni eser', Number(m[1]), Number(m[2]), tempo, sayi);
+        const id = await notaKayitOlustur(eser);
+        await eserListesiYenile();
+        kutMesaj('"' + eser.baslik + '" oluşturuldu. Çal sekmesinde ✏ Düzenle ile notaları ekle.');
+        if (window.eserAc) window.eserAc(eser, id);
+      } catch (e) {
+        kutMesaj('Eser oluşturulamadı: ' + hataYazi(e));
+      }
+    });
+  }
+
   function kutuphaneBaslat() {
     eserEkleKur();
+    bosEserKur();
     yedekKur();
     pdfKartiKur();
     gorunumKur();
@@ -984,6 +1101,15 @@
   }
 
   window.kutuphaneBaslat = kutuphaneBaslat;
+  window.notaKayitOlustur = notaKayitOlustur;
+  window.notaKaydet = notaKaydet;
   window.eserListesiYenile = eserListesiYenile;
   window.pdfKartiYenile = pdfKartiYenile;
+  window.KUT = {
+    pdfHazirla: pdfHazirla,
+    pdfKutu: pdfKutu,
+    notaKayitOlustur: notaKayitOlustur,
+    notaAc: notaAc,
+    eserListesiYenile: eserListesiYenile
+  };
 })();

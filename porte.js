@@ -8,7 +8,7 @@ const SVG_AD = 'http://www.w3.org/2000/svg';
 const PORTE_AYAR = {
   aralik: 12,       // iki çizgi arası (piksel)
   yarim: 6,         // çizgi-boşluk arası
-  vurus: 48,        // bir dörtlük vuruşun genişliği (piksel)
+  vurus: 60,        // bir dörtlük vuruşun genişliği (piksel)
   sol: 100,         // anahtar ve ölçü işareti için soldaki boşluk
   sagBosluk: 24,
   yukseklik: 290
@@ -84,17 +84,60 @@ function porteCizgisiniKoy(vurus) {
   PORTE_CIZGI.setAttribute('visibility', 'visible');
 }
 
-function notaCiz(ust, n, secili, tikla) {
+const EL_RENK = { sag: '#1d5fbf', sol: '#c2620a' };
+const PARCA_DEGERLERI = [4, 3, 2, 1.5, 1, 0.75, 0.5, 0.25];
+
+// Bir notayı gösterim parçalarına böler: ölçü çizgisini aşan ya da standart olmayan süreler
+// birbirine bağlı (ligatür) birkaç nota olarak görünür. Çalma verisi değişmez.
+function notaParcala(n, olcuVurus) {
+  const parcalar = [];
+  let bas = n.baslangic;
+  let kalan = n.sure;
+  let ilk = true;
+  while (kalan >= 0.2) {
+    if (!ilk && kalan < 0.34) break;
+    const olcuSonu = (Math.floor(bas / olcuVurus + 1e-6) + 1) * olcuVurus;
+    let tavan = Math.min(kalan, olcuSonu - bas);
+    if (tavan < 0.2) {
+      if (!ilk) break;
+      tavan = 0.25;
+    }
+    let v = 0;
+    for (let i = 0; i < PARCA_DEGERLERI.length; i++) {
+      if (PARCA_DEGERLERI[i] <= tavan + 0.06) { v = PARCA_DEGERLERI[i]; break; }
+    }
+    if (!v) break;
+    parcalar.push({ n: n, baslangic: bas, sure: v, ilk: ilk });
+    bas += v;
+    kalan -= v;
+    ilk = false;
+  }
+  if (!parcalar.length) parcalar.push({ n: n, baslangic: n.baslangic, sure: 0.25, ilk: true });
+  return parcalar;
+}
+
+function parcaKonum(c) {
   const A = PORTE_AYAR;
-  const P = PORTELER[n.el];
+  const P = PORTELER[c.n.el];
   const alt = P.ust + 4 * A.aralik;
-  const p = diyatonik(n.midi) - P.altNota; // 0 = alt çizgi, 8 = üst çizgi
-  const y = alt - p * A.yarim;
-  const x = A.sol + n.baslangic * A.vurus + 22;
-  const f = figur(n.sure);
+  c.p = diyatonik(c.n.midi) - P.altNota;   // 0 = alt çizgi, 8 = üst çizgi
+  c.y = alt - c.p * A.yarim;
+  c.x = A.sol + c.baslangic * A.vurus + 22;
+  c.alt = alt;
+}
+
+// Nota başı (sap, kiriş ve bayraklar ayrı çizilir)
+function notaCiz(ust, c, secili, tikla) {
+  const A = PORTE_AYAR;
+  const n = c.n;
+  const p = c.p;
+  const x = c.x;
+  const y = c.y;
+  const alt = c.alt;
+  const f = figur(c.sure);
 
   const g = svgEl('g', {
-    'class': 'nota el-' + n.el + (secili ? ' secili' : ''),
+    'class': 'nota el-' + n.el + (secili ? ' secili' : '') + (c.ilk ? '' : ' devam'),
     'data-id': n.id
   }, ust);
   svgEl('circle', { cx: x, cy: y, r: 17, fill: 'transparent' }, g);
@@ -117,8 +160,8 @@ function notaCiz(ust, n, secili, tikla) {
     }
   }
 
-  // Diyez
-  if (SIYAH_PC[n.midi % 12]) {
+  // Diyez (bağlı devam notalarında tekrarlanmaz)
+  if (c.ilk && SIYAH_PC[n.midi % 12]) {
     svgYazi(g, '♯', {
       x: x - 22, y: y, 'font-size': 20,
       'text-anchor': 'middle', 'dominant-baseline': 'central',
@@ -126,7 +169,6 @@ function notaCiz(ust, n, secili, tikla) {
     });
   }
 
-  // Nota başı
   svgEl('ellipse', {
     cx: x, cy: y, rx: 7.5, ry: 5.5,
     transform: 'rotate(-20 ' + x + ' ' + y + ')',
@@ -134,29 +176,140 @@ function notaCiz(ust, n, secili, tikla) {
     stroke: 'currentColor', 'stroke-width': 1.8
   }, g);
 
-  // Nokta
   if (f.nokta) {
     svgEl('circle', { cx: x + 13, cy: y - 4, r: 2, fill: 'currentColor' }, g);
   }
 
-  // Sap ve bayrak
-  if (f.sap) {
-    const asagi = p >= 4;
-    const sx = asagi ? x - 7 : x + 7;
-    const ey = asagi ? y + 40 : y - 40;
-    svgCizgi(g, sx, y, sx, ey, 'currentColor', 1.8);
-    for (let i = 0; i < f.bayrak; i++) {
-      const yy = ey + (asagi ? -i * 7 : i * 7);
-      const yol = asagi
-        ? 'M' + sx + ' ' + yy + ' q 12 -6 7 -20'
-        : 'M' + sx + ' ' + yy + ' q 12 6 7 20';
-      svgEl('path', {
-        d: yol, fill: 'none', stroke: 'currentColor', 'stroke-width': 2
-      }, g);
-    }
+  g.addEventListener('click', () => tikla(n));
+}
+
+// Saplar, kirişler, bayraklar ve ligatür yayları (dokunmaya kapalı üst katman)
+function sapKirisCiz(svg, parcalar, olcu) {
+  const A = PORTE_AYAR;
+  const SAP = 40;
+  const olaylar = {};
+  parcalar.forEach((c) => {
+    const k = c.n.el + '|' + Math.round(c.baslangic * 1000);
+    if (!olaylar[k]) olaylar[k] = { el: c.n.el, bas: c.baslangic, x: c.x, parcalar: [] };
+    olaylar[k].parcalar.push(c);
+  });
+  const liste = Object.keys(olaylar).map((k) => olaylar[k]);
+  liste.forEach((o) => {
+    let yUst = Infinity, yAlt = -Infinity, pMax = -Infinity, pMin = Infinity, kisa = Infinity, uzun = 0;
+    o.parcalar.forEach((c) => {
+      yUst = Math.min(yUst, c.y); yAlt = Math.max(yAlt, c.y);
+      pMax = Math.max(pMax, c.p); pMin = Math.min(pMin, c.p);
+      kisa = Math.min(kisa, c.sure); uzun = Math.max(uzun, c.sure);
+    });
+    o.yUst = yUst; o.yAlt = yAlt; o.kisa = kisa;
+    o.sapVar = kisa < 4;
+    o.asagi = (pMax - 4) >= (4 - pMin);
+    o.bayrak = figur(kisa).bayrak;
+  });
+
+  const kat = svgEl('g', { 'pointer-events': 'none' }, svg);
+
+  function sapUcuHesapla(o) {
+    o.sx = o.asagi ? o.x - 7 : o.x + 7;
+    o.bas0 = o.asagi ? o.yUst : o.yAlt;                 // sapın başladığı yer
+    o.uc = o.asagi ? o.yAlt + SAP : o.yUst - SAP;       // varsayılan uç
   }
 
-  g.addEventListener('click', () => tikla(n));
+  // Kiriş zincirleri: aynı elde, aynı vuruş grubunda, aralıksız ardışık sekizlik/onaltılık
+  const grupBoyu = (olcu.payda === 8 && olcu.pay >= 6 && olcu.pay % 3 === 0) ? 1.5 : 1;
+  ['sag', 'sol'].forEach((el) => {
+    const o = liste.filter((e) => e.el === el && e.sapVar).sort((a, b) => a.bas - b.bas);
+    let zincir = [];
+    const zincirler = [];
+    const bitir = () => { if (zincir.length >= 2) zincirler.push(zincir); zincir = []; };
+    o.forEach((e) => {
+      if (e.bayrak < 1) { bitir(); return; }
+      if (zincir.length) {
+        const onceki = zincir[zincir.length - 1];
+        const ayniGrup = Math.floor((e.bas + 1e-6) / grupBoyu) === Math.floor((onceki.bas + 1e-6) / grupBoyu);
+        const bitisik = e.bas - onceki.bas <= onceki.kisa + 0.01;
+        if (!ayniGrup || !bitisik) bitir();
+      }
+      zincir.push(e);
+    });
+    bitir();
+    zincirler.forEach((z) => {
+      let oy = 0;
+      z.forEach((e) => { oy += e.asagi ? 1 : -1; });
+      const asagi = oy > 0 || (oy === 0 && z[0].asagi);
+      z.forEach((e) => { e.asagi = asagi; e.zincir = z; });
+    });
+    o.forEach((e) => sapUcuHesapla(e));
+    zincirler.forEach((z) => {
+      const ilk = z[0], son = z[z.length - 1];
+      const dx = son.sx - ilk.sx;
+      const egim = Math.max(-12, Math.min(12, son.uc - ilk.uc));
+      const asagi = ilk.asagi;
+      let c = asagi ? -Infinity : Infinity;
+      z.forEach((e) => {
+        e.s = dx ? egim * (e.sx - ilk.sx) / dx : 0;
+        const aday = e.uc - e.s;
+        c = asagi ? Math.max(c, aday) : Math.min(c, aday);
+      });
+      z.forEach((e) => { e.uc = c + e.s; });
+      const m = dx ? egim / dx : 0;
+      const yAt = (x) => ilk.uc + (x - ilk.sx) * m;
+      const renk = EL_RENK[el];
+      const ic = asagi ? -2.5 : 2.5;     // kiriş kalınlığı notaya doğru
+      svgCizgi(kat, ilk.sx - 0.9, yAt(ilk.sx - 0.9) + ic, son.sx + 0.9, yAt(son.sx + 0.9) + ic, renk, 5);
+      // ikinci kiriş (onaltılıklar)
+      const kayma = asagi ? -9.5 : 9.5;
+      let i = 0;
+      while (i < z.length) {
+        if (z[i].bayrak < 2) { i++; continue; }
+        let j = i;
+        while (j + 1 < z.length && z[j + 1].bayrak >= 2) j++;
+        if (j > i) {
+          svgCizgi(kat, z[i].sx, yAt(z[i].sx) + kayma, z[j].sx, yAt(z[j].sx) + kayma, renk, 4);
+        } else {
+          const yon = i > 0 ? -1 : 1;
+          const x2 = z[i].sx + yon * 10;
+          svgCizgi(kat, z[i].sx, yAt(z[i].sx) + kayma, x2, yAt(x2) + kayma, renk, 4);
+        }
+        i = j + 1;
+      }
+    });
+  });
+
+  // Saplar ve (kirişsiz notalar için) bayraklar
+  liste.forEach((e) => {
+    if (!e.sapVar) return;
+    if (e.sx === undefined) sapUcuHesapla(e);
+    const renk = EL_RENK[e.el];
+    svgCizgi(kat, e.sx, e.bas0, e.sx, e.uc, renk, 1.8);
+    if (!e.zincir) {
+      for (let i = 0; i < e.bayrak; i++) {
+        const yy = e.uc + (e.asagi ? -i * 7 : i * 7);
+        const yol = e.asagi
+          ? 'M' + e.sx + ' ' + yy + ' q 12 -6 7 -20'
+          : 'M' + e.sx + ' ' + yy + ' q 12 6 7 20';
+        svgEl('path', { d: yol, fill: 'none', stroke: renk, 'stroke-width': 2 }, kat);
+      }
+    }
+  });
+
+  // Ligatür yayları: aynı notanın ardışık parçaları arasında
+  const sonrakiOlay = {};
+  liste.forEach((e) => e.parcalar.forEach((c) => { c.olay = e; }));
+  const notaParcalari = {};
+  parcalar.forEach((c) => {
+    (notaParcalari[c.n.id] = notaParcalari[c.n.id] || []).push(c);
+  });
+  Object.keys(notaParcalari).forEach((id) => {
+    const dizi = notaParcalari[id];
+    for (let i = 0; i + 1 < dizi.length; i++) {
+      const a = dizi[i], b = dizi[i + 1];
+      const yan = a.olay.sapVar && a.olay.asagi ? -1 : 1;
+      const y0 = a.y + yan * 8;
+      const yol = 'M' + (a.x + 3) + ' ' + y0 + ' Q' + ((a.x + b.x) / 2) + ' ' + (y0 + yan * 12) + ' ' + (b.x - 3) + ' ' + y0;
+      svgEl('path', { d: yol, fill: 'none', stroke: EL_RENK[a.n.el], 'stroke-width': 1.8 }, kat);
+    }
+  });
 }
 
 /*
@@ -243,10 +396,16 @@ function porteCiz(kutu, eser, sec) {
   }
 
   // Notalar
+  const parcalar = [];
   eser.notalar.forEach((n) => {
     if (!sec[n.el]) return;
-    notaCiz(svg, n, n.id === sec.seciliId, sec.tikla);
+    notaParcala(n, olcuVurus).forEach((c) => {
+      parcaKonum(c);
+      parcalar.push(c);
+      notaCiz(svg, c, n.id === sec.seciliId, sec.tikla);
+    });
   });
+  sapKirisCiz(svg, parcalar, eser.olcu);
 
   // İlerleme çizgisi (en üstte, başta gizli)
   PORTE_CIZGI = svgEl('line', {

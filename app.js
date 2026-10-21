@@ -1,4 +1,4 @@
-const SURUM = 'Aşama 6';
+const SURUM = 'Aşama 11';
 
 const ILK_MIDI = 21;  // La0
 const SON_MIDI = 108; // Do8
@@ -10,7 +10,7 @@ let beyazGenislik = 60;
 let siyahGenislik = 36;
 
 // Elle çalmada tuş bırakılınca sesin sönme hızı (saniye). Büyüdükçe ses daha uzun çınlar.
-const BIRAKMA_SURESI = 0.3;
+const BIRAKMA_SURESI = 0.15;
 
 // "Önbelleği temizle" düğmesinin silmeyeceği önbellekler (indirilen sesler ve PDF desteği)
 const KORUNAN_ONBELLEKLER = [PIYANO_ONBELLEK, 'piyano-pdf-v1'];
@@ -24,6 +24,7 @@ let anaCikis = null;
 const sesler = {};
 const tuslar = {}; // midi -> { el, siyah, indeks, sol }
 let klavyeKontrol = null;
+const KAYAN = { tuval: null, c2: null, w: 0, h: 0, dpr: 1 };
 
 /* ---------- SES ---------- */
 
@@ -241,6 +242,7 @@ function tusBas(midi, id) {
   if (ilk) {
     tuslar[midi].el.classList.add('basili');
     notaCal(midi);
+    if (window.PERF) PERF.tusBasildi(midi, performance.now());
   }
   document.getElementById('nota-bilgi').textContent = notaAdi(midi);
 }
@@ -403,11 +405,13 @@ function gezinmeKur() {
     sliderAyarla();
     gorunenYaz();
     boyutYaz();
+    kayanYenile();
   }
 
   kutu.addEventListener('scroll', () => {
     kaydirici.value = kutu.scrollLeft;
     gorunenYaz();
+    kayanYenile();
   });
 
   kaydirici.addEventListener('input', () => {
@@ -463,6 +467,7 @@ function gezinmeKur() {
 /* ---------- ESER, PORTE VE EL SEÇİMİ ---------- */
 
 let aktifEser = ORNEK_ESER;
+let aktifEserKayit = null;   // kütüphanedeki kayıt kimliği (örnek eserde null)
 const elGorunum = { sag: true, sol: true };
 let seciliNotaId = null;
 let notaZamanlayici = null;
@@ -479,8 +484,25 @@ function eserBasligiYaz() {
     e.baslik + ' · ' + e.olcu.pay + '/' + e.olcu.payda + ' · ♩ = ' + e.tempo;
 }
 
+// Porte, bulunduğu alanın yüksekliğine sığacak şekilde ölçeklenir
+let porteOlcek = 1;
+
+function porteOlcekle() {
+  const kutu = document.getElementById('porte-kutu');
+  const svg = kutu.querySelector('svg');
+  if (!svg || !kutu.clientHeight) return;
+  const vb = svg.viewBox.baseVal;
+  const hedef = Math.min(Math.max(kutu.clientHeight - 2, 110), vb.height * 1.5);
+  porteOlcek = hedef / vb.height;
+  svg.setAttribute('width', vb.width * porteOlcek);
+  svg.setAttribute('height', hedef);
+}
+
 function porteYenile() {
   oncekiCalanAnahtar = '';
+  const kutu0 = document.getElementById('porte-kutu');
+  const eskiSol = kutu0.scrollLeft;
+  const eskiUst = kutu0.scrollTop;
   porteCiz(document.getElementById('porte-kutu'), aktifEser, {
     sag: elGorunum.sag,
     sol: elGorunum.sol,
@@ -489,6 +511,10 @@ function porteYenile() {
     bolumBas: bolumBas,
     bolumSon: bolumSon
   });
+  porteOlcekle();
+  if (window.PERF) PERF.isaretYenile();
+  kutu0.scrollLeft = eskiSol;
+  kutu0.scrollTop = eskiUst;
   if (cal.durum === 'duraklat') porteCizgisiniKoy(cal.baslangic + cal.duraklatVB);
 }
 
@@ -544,8 +570,47 @@ function kutuphaneKur() {
   document.getElementById('ornek-bilgi').textContent =
     e.baslik + ' (' + e.besteci + '), ' + e.olcuSayisi + ' ölçü, ' +
     e.olcu.pay + '/' + e.olcu.payda + '.';
-  document.getElementById('btn-ornek-ac').addEventListener('click', () => sekmeGoster('cal'));
+  document.getElementById('btn-ornek-ac').addEventListener('click', () => eserAc(ORNEK_ESER, null));
+  document.getElementById('btn-ornek-kopya').addEventListener('click', async () => {
+    const mesaj = document.getElementById('kut-mesaj');
+    try {
+      const kopya = JSON.parse(JSON.stringify(ORNEK_ESER));
+      kopya.id = 'nota-' + Date.now().toString(36);
+      kopya.baslik = ORNEK_ESER.baslik + ' (kopya)';
+      const id = await window.notaKayitOlustur(kopya);
+      if (window.eserListesiYenile) await window.eserListesiYenile();
+      mesaj.textContent = '"' + kopya.baslik + '" kütüphaneye eklendi. Çal sekmesinde ✏ Düzenle ile değiştirebilirsin.';
+      eserAc(kopya, id);
+    } catch (e) {
+      mesaj.textContent = 'Kopya oluşturulamadı: ' + (e && e.message ? e.message : 'bilinmeyen hata');
+    }
+  });
 }
+
+// Verilen eseri Çal sekmesinde açar (örnek eser, içe aktarılan ya da kendi yazdığın eser)
+async function eserAc(eser, kayitId) {
+  if (window.DUZ) await DUZ.kaydet();   // önceki eserdeki bekleyen değişiklikleri kaydet
+  if (window.PERF) PERF.kapat();
+  calmaDurdur();
+  hepsiniBirak();
+  aktifEser = eser;
+  aktifEserKayit = kayitId || null;
+  bolumBas = 1;
+  bolumSon = eser.olcuSayisi;
+  tempoYuzde = 100;
+  seciliNotaId = null;
+  klavyeIsaretiniTemizle();
+  eserBasligiYaz();
+  bolumYaz();
+  tempoYaz();
+  porteYenile();
+  document.getElementById('porte-kutu').scrollLeft = 0;
+  kayanYenile();
+  document.getElementById('nota-bilgi').textContent = 'Bir tuşa ya da notaya dokun';
+  sekmeGoster('cal');
+  if (window.DUZ) DUZ.eserDegisti();
+}
+window.eserAc = eserAc;
 
 /* ---------- ÇALMA MOTORU ---------- */
 // Zaman "vuruş" cinsinden tutulur (1 vuruş = dörtlük nota).
@@ -674,6 +739,7 @@ function calmaDuraklat() {
   vurguUygula([]);
   porteCizgisiniKoy(cal.baslangic + cal.duraklatVB);
   dugmeleriGuncelle();
+  kayanYenile();
 }
 
 function calmaDurdur(sesiKes) {
@@ -690,6 +756,7 @@ function calmaDurdur(sesiKes) {
   porteCizgisiniKoy(null);
   document.getElementById('olcu-gosterge').textContent = '';
   dugmeleriGuncelle();
+  kayanYenile();
 }
 
 function calmaBitir() {
@@ -726,7 +793,7 @@ function vurguUygula(calan) {
 
 function porteyiTakipEt(vurus) {
   const kutu = document.getElementById('porte-kutu');
-  const x = porteVurusX(vurus);
+  const x = porteVurusX(vurus) * porteOlcek;
   if (x > kutu.scrollLeft + kutu.clientWidth * 0.85 || x < kutu.scrollLeft + 10) {
     kutu.scrollLeft = Math.max(x - kutu.clientWidth * 0.2, 0);
   }
@@ -743,6 +810,8 @@ function cizimDongusu() {
 
   const calan = cal.olaylar.filter((o) => o.b <= pos + 1e-6 && pos < o.b + o.sure - 1e-6);
   vurguUygula(calan);
+
+  kayanCiz(pos);
 
   const genel = cal.baslangic + pos;
   porteCizgisiniKoy(genel);
@@ -780,6 +849,7 @@ function elDegisti() {
   } else if (cal.durum === 'duraklat') {
     olaylariHazirla();
   }
+  kayanYenile();
 }
 
 function tempoYaz() {
@@ -852,6 +922,7 @@ function calmaKur() {
   $('dongu').addEventListener('click', () => {
     donguAcik = !donguAcik;
     $('dongu').classList.toggle('aktif', donguAcik);
+    kayanYenile();
     if (!donguAcik && cal.durum === 'caliyor') {
       // Döngü kapandı: bulunduğumuz turu bitirip dur
       const vb = Math.max(vbSimdi(), 0);
@@ -862,12 +933,376 @@ function calmaKur() {
 
   // Başka uygulamaya geçilirse çalmayı duraklat (arka planda zamanlama bozulur)
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) calmaDuraklat();
+    if (document.hidden) {
+      calmaDuraklat();
+      if (window.PERF) PERF.iptal();
+    }
   });
 
   bolumYaz();
   tempoYaz();
   dugmeleriGuncelle();
+}
+
+/* ---------- KAYAN NOTALAR ---------- */
+// Notalar yukarıdan aşağı akar ve klavyedeki tuşlarla aynı hizadadır.
+// Zaman ekseni vuruş cinsindendir: tempo değişince akış hızı da değişir.
+
+function yuvarlakDikdortgen(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function kayanCiz(pos) {
+  const k = KAYAN;
+  if (!k.c2 || !k.w || !k.h) return;
+  const c = k.c2;
+  c.setTransform(k.dpr, 0, 0, k.dpr, 0, 0);
+  c.fillStyle = '#0e0e1c';
+  c.fillRect(0, 0, k.w, k.h);
+
+  const kayma = document.getElementById('kaydirma').scrollLeft;
+  const alt = k.h;
+  const ppb = Math.min(Math.max(k.h / 5, 30), 80); // vuruş başına piksel
+  const len = cal.uzunluk;
+  const denemede = !!(window.PERF && PERF.sahne());
+  const kopya = donguAcik && len > 0 && !denemede ? 2 : 1;
+
+  // Oktav ayırıcı çizgileri
+  c.strokeStyle = '#1c1c34';
+  c.lineWidth = 1;
+  c.beginPath();
+  for (let m = ILK_MIDI; m <= SON_MIDI; m++) {
+    if (m % 12 !== 0) continue;
+    const x = Math.round(tuslar[m].sol - kayma) + 0.5;
+    if (x >= 0 && x <= k.w) {
+      c.moveTo(x, 0);
+      c.lineTo(x, alt);
+    }
+  }
+  c.stroke();
+
+  // Ölçü çizgileri ve numaraları
+  const ov = olcuVurusu();
+  c.font = '11px system-ui, sans-serif';
+  c.textBaseline = 'bottom';
+  for (let r = 0; r < kopya; r++) {
+    for (let m = bolumBas - 1; m <= bolumSon; m++) {
+      const bl = m * ov - cal.baslangic + r * len;
+      const y = alt - (bl - pos) * ppb;
+      if (y < 0 || y > alt) continue;
+      c.fillStyle = 'rgba(255,255,255,0.14)';
+      c.fillRect(0, Math.round(y), k.w, 1);
+      if (m < bolumSon) {
+        c.fillStyle = 'rgba(255,255,255,0.4)';
+        c.fillText(String(m + 1), 4, y - 2);
+      }
+    }
+  }
+
+  // Notalar: önce beyaz tuşlar, sonra siyah tuşlar (üstte)
+  [false, true].forEach((siyahTur) => {
+    for (let r = 0; r < kopya; r++) {
+      cal.olaylar.forEach((o) => {
+        const t = tuslar[o.midi];
+        if (!t || t.siyah !== siyahTur) return;
+        const bb = o.b + r * len;
+        const ybot = alt - (bb - pos) * ppb;
+        const ytop = alt - (bb + o.sure - pos) * ppb;
+        if (ybot < 0 || ytop > alt) return;
+        const genis = (t.siyah ? siyahGenislik : beyazGenislik) - 3;
+        const x = t.sol - kayma + 1.5;
+        if (x + genis < 0 || x > k.w) return;
+        const calan = bb <= pos + 1e-6 && pos < bb + o.sure - 1e-6;
+        const h = Math.max(ybot - ytop - 1, 5);
+        const sonucRenk = denemede ? PERF.renk(o.id) : null;
+        if (sonucRenk) {
+          c.fillStyle = sonucRenk;
+        } else if (o.el === 'sag') {
+          c.fillStyle = calan ? '#a9c9ff' : (t.siyah ? '#2f6fd8' : '#4f8df5');
+        } else {
+          c.fillStyle = calan ? '#ffd699' : (t.siyah ? '#d9822b' : '#f2a03d');
+        }
+        yuvarlakDikdortgen(c, x, ybot - 1 - h, genis, h, 4);
+        c.fill();
+        c.strokeStyle = 'rgba(0,0,0,0.45)';
+        c.lineWidth = 1;
+        c.stroke();
+      });
+    }
+  });
+
+  // Vuruş çizgisi (notaların tuşa değdiği yer)
+  c.fillStyle = 'rgba(255,255,255,0.45)';
+  c.fillRect(0, alt - 2, k.w, 2);
+}
+
+// Çalma sürmüyorsa duran halini çizer (çalarken kareler zaten çiziliyor)
+function kayanYenile() {
+  if (window.PERF && PERF.sahne()) {
+    PERF.kareCiz();
+    return;
+  }
+  if (cal.durum === 'caliyor') return;
+  olaylariHazirla();
+  kayanCiz(cal.durum === 'duraklat' ? cal.duraklatVB : 0);
+}
+
+function kayanKur() {
+  const kutu = document.getElementById('kayan-kutu');
+  const tuval = document.getElementById('kayan-tuval');
+  KAYAN.tuval = tuval;
+  KAYAN.c2 = tuval.getContext('2d');
+
+  const boyutla = () => {
+    const w = kutu.clientWidth;
+    const h = kutu.clientHeight;
+    if (!w || !h) {
+      KAYAN.w = 0;
+      KAYAN.h = 0;
+      return;
+    }
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    tuval.width = Math.round(w * dpr);
+    tuval.height = Math.round(h * dpr);
+    KAYAN.w = w;
+    KAYAN.h = h;
+    KAYAN.dpr = dpr;
+    kayanYenile();
+  };
+
+  if (window.ResizeObserver) new ResizeObserver(boyutla).observe(kutu);
+  else window.addEventListener('resize', boyutla);
+  boyutla();
+}
+
+/* ---------- PANEL DÜZENİ (PORTE / KAYAN NOTA / KLAVYE) ---------- */
+// Üç bölümün yüksekliği ayırıcılar sürüklenerek ayarlanır, her biri kapatılabilir.
+// Ayar bu cihazda hatırlanır.
+
+const PANEL_ANAHTAR = 'piyano-yerlesim';
+const PANEL_ADLARI = ['porte', 'kayan', 'klavye'];
+const PANEL_KIMLIK = { porte: 'porte-kutu', kayan: 'kayan-kutu', klavye: 'klavye-bolum' };
+const PANEL_DUGME = { porte: 'pn-porte', kayan: 'pn-kayan', klavye: 'pn-klavye' };
+const PANEL_VARSAYILAN = {
+  acik: { porte: true, kayan: true, klavye: true },
+  agirlik: { porte: 4, kayan: 3, klavye: 3 }
+};
+let panelDuzen = JSON.parse(JSON.stringify(PANEL_VARSAYILAN));
+
+function panelEl(ad) {
+  return document.getElementById(PANEL_KIMLIK[ad]);
+}
+
+function panelDuzenOku() {
+  try {
+    const v = JSON.parse(localStorage.getItem(PANEL_ANAHTAR));
+    if (!v || !v.acik || !v.agirlik) return;
+    PANEL_ADLARI.forEach((ad) => {
+      if (typeof v.acik[ad] === 'boolean') panelDuzen.acik[ad] = v.acik[ad];
+      const w = Number(v.agirlik[ad]);
+      if (isFinite(w) && w > 0) panelDuzen.agirlik[ad] = w;
+    });
+  } catch (e) {}
+}
+
+function panelDuzenYaz() {
+  try {
+    localStorage.setItem(PANEL_ANAHTAR, JSON.stringify(panelDuzen));
+  } catch (e) {}
+}
+
+function panelDuzenUygula() {
+  PANEL_ADLARI.forEach((ad) => {
+    const el = panelEl(ad);
+    el.hidden = !panelDuzen.acik[ad];
+    el.style.flexGrow = String(panelDuzen.agirlik[ad]);
+    document.getElementById(PANEL_DUGME[ad]).classList.toggle('aktif', panelDuzen.acik[ad]);
+  });
+  const a = panelDuzen.acik;
+  document.getElementById('ayirici-1').hidden = !(a.porte && (a.kayan || a.klavye));
+  document.getElementById('ayirici-2').hidden = !(a.kayan && a.klavye);
+}
+
+function panelDugmeleriKur() {
+  PANEL_ADLARI.forEach((ad) => {
+    document.getElementById(PANEL_DUGME[ad]).addEventListener('click', () => {
+      const aciktiydi = panelDuzen.acik[ad];
+      if (ad === 'klavye' && aciktiydi) {
+        hepsiniBirak();
+        if (klavyeKontrol) klavyeKontrol.sakla();
+      }
+      panelDuzen.acik[ad] = !aciktiydi;
+      panelDuzenUygula();
+      panelDuzenYaz();
+      if (ad === 'klavye' && !aciktiydi && klavyeKontrol) klavyeKontrol.geriYukle();
+      porteOlcekle();
+      kayanYenile();
+    });
+  });
+
+  document.getElementById('pn-sifirla').addEventListener('click', () => {
+    panelDuzen = JSON.parse(JSON.stringify(PANEL_VARSAYILAN));
+    panelDuzenUygula();
+    panelDuzenYaz();
+    if (klavyeKontrol) klavyeKontrol.geriYukle();
+  });
+}
+
+function ayiriciKur(kimlik) {
+  const ay = document.getElementById(kimlik);
+  let d = null;
+
+  ay.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const gorunur = PANEL_ADLARI.filter((ad) => panelDuzen.acik[ad]);
+    let ust;
+    let alt;
+    if (kimlik === 'ayirici-1') {
+      ust = 'porte';
+      alt = panelDuzen.acik.kayan ? 'kayan' : 'klavye';
+    } else {
+      ust = 'kayan';
+      alt = 'klavye';
+    }
+    const yuk = {};
+    gorunur.forEach((ad) => {
+      yuk[ad] = panelEl(ad).offsetHeight;
+    });
+    // Mevcut piksel yüksekliklerini ağırlık yap: oranlar değişmeden sabitlenir
+    gorunur.forEach((ad) => {
+      panelDuzen.agirlik[ad] = Math.max(yuk[ad], 1);
+      panelEl(ad).style.flexGrow = String(panelDuzen.agirlik[ad]);
+    });
+    const enAz = (ad) => parseFloat(getComputedStyle(panelEl(ad)).minHeight) || 40;
+    d = { ust: ust, alt: alt, yuk: yuk, y0: e.clientY, minU: enAz(ust), minA: enAz(alt) };
+    try { ay.setPointerCapture(e.pointerId); } catch (err) {}
+    ay.classList.add('surukle');
+  });
+
+  ay.addEventListener('pointermove', (e) => {
+    if (!d) return;
+    e.preventDefault();
+    let dy = e.clientY - d.y0;
+    dy = Math.min(Math.max(dy, d.minU - d.yuk[d.ust]), d.yuk[d.alt] - d.minA);
+    panelDuzen.agirlik[d.ust] = d.yuk[d.ust] + dy;
+    panelDuzen.agirlik[d.alt] = d.yuk[d.alt] - dy;
+    panelEl(d.ust).style.flexGrow = String(panelDuzen.agirlik[d.ust]);
+    panelEl(d.alt).style.flexGrow = String(panelDuzen.agirlik[d.alt]);
+  });
+
+  const bitir = () => {
+    if (!d) return;
+    d = null;
+    ay.classList.remove('surukle');
+    panelDuzenYaz();
+  };
+  ay.addEventListener('pointerup', bitir);
+  ay.addEventListener('pointercancel', bitir);
+  ay.addEventListener('lostpointercapture', bitir);
+}
+
+function panelDuzeniKur() {
+  panelDuzenOku();
+  panelDugmeleriKur();
+  ayiriciKur('ayirici-1');
+  ayiriciKur('ayirici-2');
+  panelDuzenUygula();
+  if (window.ResizeObserver) {
+    new ResizeObserver(porteOlcekle).observe(document.getElementById('porte-kutu'));
+  }
+}
+
+/* ---------- PERFORMANS (ÇALDIĞINI KONTROL) ---------- */
+// Kontrol mantığı performans.js içindedir; burada yalnızca gereken bağlantılar verilir.
+
+function performansKur() {
+  if (!window.PERF) return;
+  PERF.kur({
+    hazirla: () => {
+      olaylariHazirla();
+      return { olaylar: cal.olaylar, baslangic: cal.baslangic, uzunluk: cal.uzunluk };
+    },
+    bpm: bpm,
+    olcuVurusu: olcuVurusu,
+    baglam: () => {
+      sesBaslat();
+      return ctx;
+    },
+    kayanCiz: kayanCiz,
+    kayanYenile: kayanYenile,
+    porteCizgi: porteCizgisiniKoy,
+    porteTakip: porteyiTakipEt,
+    tusEl: (midi) => (tuslar[midi] ? tuslar[midi].el : null),
+    eserAdi: () => aktifEser.baslik,
+    calmaDurdur: () => calmaDurdur(),
+    bolumAyarla: (bas, son) => {
+      bolumBas = bas;
+      bolumSon = son;
+      bolumDegisti();
+    }
+  });
+}
+
+/* ---------- DÜZENLEME ---------- */
+// Düzenleme mantığı duzenle.js içindedir; burada yalnızca gereken bağlantılar verilir.
+
+function duzenleKur() {
+  if (!window.DUZ) return;
+  DUZ.kur({
+    eser: () => aktifEser,
+    kayitId: () => aktifEserKayit,
+    secili: () => seciliNotaId,
+    seciliYap: (id) => {
+      seciliNotaId = id;
+      if (!id) klavyeIsaretiniTemizle();
+    },
+    yenile: () => {
+      calmaDurdur();
+      porteYenile();
+      kayanYenile();
+    },
+    olcuDegisti: (eski) => {
+      if (bolumSon === eski || bolumSon > aktifEser.olcuSayisi) bolumSon = aktifEser.olcuSayisi;
+      if (bolumBas > bolumSon) bolumBas = bolumSon;
+      calmaDurdur();
+      bolumYaz();
+      porteYenile();
+      kayanYenile();
+    },
+    sesCal: (midi) => {
+      notaCal(midi);
+      setTimeout(() => {
+        const kume = tusSahipleri[midi];
+        if (!kume || kume.size === 0) notaBirak(midi);
+      }, 500);
+    },
+    mesaj: (yazi) => {
+      document.getElementById('nota-bilgi').textContent = yazi;
+    },
+    deneAcik: () => !!(window.PERF && PERF.aktif()),
+    calmaDurdur: () => calmaDurdur(),
+    kaydet: (eser, id) => window.notaKaydet(id, eser),
+    kopyala: async () => {
+      try {
+        const kopya = JSON.parse(JSON.stringify(aktifEser));
+        kopya.id = 'nota-' + Date.now().toString(36);
+        kopya.baslik = String(aktifEser.baslik).slice(0, 100) + ' (kopya)';
+        const id = await window.notaKayitOlustur(kopya);
+        if (window.eserListesiYenile) window.eserListesiYenile();
+        await eserAc(kopya, id);
+      } catch (e) {
+        document.getElementById('nota-bilgi').textContent =
+          'Kopya oluşturulamadı: ' + (e && e.message ? e.message : 'bilinmeyen hata');
+      }
+    }
+  });
 }
 
 /* ---------- SEKMELER ---------- */
@@ -879,6 +1314,7 @@ function sekmeGoster(ad) {
 
   if (aktifSekme === 'cal') {
     calmaDuraklat();
+    if (window.PERF) PERF.iptal();
     hepsiniBirak();
     if (klavyeKontrol) klavyeKontrol.sakla();
   }
@@ -892,6 +1328,7 @@ function sekmeGoster(ad) {
   aktifSekme = ad;
 
   if (ad === 'cal' && klavyeKontrol) klavyeKontrol.geriYukle();
+  if (ad === 'cal') porteOlcekle();
   if (ad === 'kutuphane' && window.eserListesiYenile) window.eserListesiYenile();
   if (ad === 'ayarlar') ayarlarYenile();
 }
@@ -1132,6 +1569,7 @@ function servisCalisaniKaydet() {
 
 /* ---------- BAŞLAT ---------- */
 
+window.addEventListener('resize', porteOlcekle);
 window.addEventListener('online', durumGuncelle);
 window.addEventListener('offline', durumGuncelle);
 
@@ -1142,6 +1580,10 @@ eserBasligiYaz();
 elDugmeleriKur();
 porteYenile();
 calmaKur();
+panelDuzeniKur();
+kayanKur();
+performansKur();
+duzenleKur();
 kutuphaneKur();
 sekmeleriKur();
 sesKartiKur();

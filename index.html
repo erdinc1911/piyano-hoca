@@ -29,13 +29,15 @@
           <p class="buyuk">Örnek eser</p>
           <p id="ornek-bilgi"></p>
           <button id="btn-ornek-ac" type="button">Çal sekmesinde aç</button>
+          <button id="btn-ornek-kopya" type="button">Kopyasını kütüphaneye ekle (düzenlemek için)</button>
         </div>
 
         <div class="kart">
           <p class="buyuk">Kendi eserlerin</p>
-          <p class="ipucu">PDF, JPG, JPEG ve PNG nota dosyaları eklenir, bu cihazda saklanır ve internetsiz açılır. Bu sürümde dosyalar görüntülenir; nota tanıma ve çalma sonraki aşamalarda gelecek. Dosya başına en fazla 50 MB.</p>
+          <p class="ipucu">PDF, JPG ve PNG nota dosyaları eklenir ve görüntülenir. MusicXML (.musicxml, .xml, .mxl) ve MIDI (.mid) dosyaları ise çalınabilir eser olarak eklenir: porte, kayan nota, tempo, döngü, "Dene" ve ✏ Düzenle onlarla da çalışır. Hepsi bu cihazda saklanır ve internetsiz açılır. PDF ve fotoğraflardaki notalar henüz çalınamaz. Dosya başına en fazla 50 MB.</p>
           <button id="btn-eser-ekle" type="button">＋ Eser ekle</button>
-          <input id="dosya-sec" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple hidden>
+          <button id="btn-bos-eser" type="button">＋ Boş eser oluştur (kendi notalarını yaz)</button>
+          <input id="dosya-sec" type="file" multiple hidden>
           <p id="kut-mesaj" class="mesaj"></p>
           <div id="eser-listesi"></div>
         </div>
@@ -64,13 +66,20 @@
     <section id="sekme-cal" class="sekme aktif">
       <div id="eser-cubugu">
         <div id="eser-baslik"></div>
+        <div id="nota-bilgi">Bir tuşa ya da notaya dokun</div>
+        <div id="panel-dugmeleri">
+          <button id="pn-porte" type="button" class="pn-dugme aktif">Porte</button>
+          <button id="pn-kayan" type="button" class="pn-dugme aktif">Kayan nota</button>
+          <button id="pn-klavye" type="button" class="pn-dugme aktif">Klavye</button>
+          <button id="pn-sifirla" type="button" class="pn-dugme" aria-label="Düzeni sıfırla">↺</button>
+        </div>
         <button id="el-sag" type="button" class="el-dugme sag aktif">Sağ el</button>
         <button id="el-sol" type="button" class="el-dugme sol aktif">Sol el</button>
       </div>
 
       <div id="calma-cubugu">
         <button id="btn-cal" type="button" class="cal-dugme">▶ Çal</button>
-        <button id="btn-durdur" type="button" class="cal-dugme" disabled>⏹ Durdur</button>
+        <button id="btn-durdur" type="button" class="cal-dugme" disabled aria-label="Durdur">⏹</button>
         <div class="grup">
           <span class="etiket">Tempo</span>
           <button id="tempo-azalt" type="button" class="kucuk" aria-label="Yavaşlat">−</button>
@@ -90,24 +99,81 @@
           <button id="bolum-tumu" type="button" class="kucuk genis">Tümü</button>
         </div>
         <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
+        <button id="btn-dene" type="button" class="cal-dugme">🎯 Dene</button>
+        <button id="btn-duzenle" type="button" class="cal-dugme">✏ Düzenle</button>
         <span id="olcu-gosterge"></span>
       </div>
 
-      <div id="porte-kutu"></div>
-      <div id="nota-bilgi">Bir tuşa ya da porteki bir notaya dokun</div>
-      <div id="gezinme">
-        <button id="oktav-sol" type="button">◀ Oktav</button>
-        <input id="kaydirici" type="range" min="0" max="100" value="0" step="1">
-        <button id="oktav-sag" type="button">Oktav ▶</button>
-        <div id="boyut-grup">
-          <button id="kucult" type="button" aria-label="Tuşları küçült">−</button>
-          <span id="boyut-yazi">Tuş</span>
-          <button id="buyut" type="button" aria-label="Tuşları büyüt">+</button>
+      <div id="dene-cubugu" hidden>
+        <div class="grup">
+          <button id="dene-bekle" type="button" class="sg aktif">Beni bekle</button>
+          <button id="dene-tempo" type="button" class="sg">Tempoda</button>
         </div>
-        <span id="gorunen"></span>
+        <div id="dene-hass" class="grup" hidden>
+          <span class="etiket">Hassasiyet</span>
+          <button id="dh-0" type="button" class="sg">Rahat</button>
+          <button id="dh-1" type="button" class="sg aktif">Normal</button>
+          <button id="dh-2" type="button" class="sg">Sıkı</button>
+        </div>
+        <button id="dene-metro" type="button" class="sg aktif" hidden>🔔 Metronom</button>
+        <button id="dene-basla" type="button" class="cal-dugme">▶ Başla</button>
+        <span id="dene-durum"></span>
       </div>
-      <div id="kaydirma">
-        <div id="klavye"></div>
+
+      <div id="duzenle-cubugu" hidden>
+        <div id="duz-araclar">
+          <div class="grup">
+            <span class="etiket">Yeni nota</span>
+            <button id="ds-0" type="button" class="sg"></button>
+            <button id="ds-1" type="button" class="sg"></button>
+            <button id="ds-2" type="button" class="sg aktif"></button>
+            <button id="ds-3" type="button" class="sg"></button>
+            <button id="ds-4" type="button" class="sg"></button>
+            <button id="duz-nokta" type="button" class="sg">Noktalı</button>
+            <button id="duz-diyez" type="button" class="sg">♯ Diyez</button>
+          </div>
+          <div class="grup">
+            <span class="etiket">Seçili nota</span>
+            <button id="duz-yukari" type="button" class="sg" aria-label="Yarım ton yukarı">▲ ½</button>
+            <button id="duz-asagi" type="button" class="sg" aria-label="Yarım ton aşağı">▼ ½</button>
+            <button id="duz-oktav-yukari" type="button" class="sg">▲ Oktav</button>
+            <button id="duz-oktav-asagi" type="button" class="sg">▼ Oktav</button>
+            <button id="duz-kisalt" type="button" class="sg">Kısalt</button>
+            <button id="duz-uzat" type="button" class="sg">Uzat</button>
+            <button id="duz-el" type="button" class="sg">El değiştir</button>
+            <button id="duz-sil" type="button" class="sg">Sil</button>
+          </div>
+          <div class="grup">
+            <button id="duz-geri" type="button" class="sg">↶ Geri al</button>
+            <button id="duz-olcu-ekle" type="button" class="sg">＋ Ölçü</button>
+            <button id="duz-olcu-sil" type="button" class="sg">− Ölçü</button>
+          </div>
+        </div>
+        <button id="duz-kopya" type="button" class="cal-dugme" hidden>Kopyasını oluştur ve düzenle</button>
+        <span id="duz-durum"></span>
+      </div>
+
+      <div id="paneller">
+        <div id="porte-kutu" class="panel"></div>
+        <div id="ayirici-1" class="ayirici" role="separator" aria-label="Porte bölümünün yüksekliğini ayarla"></div>
+        <div id="kayan-kutu" class="panel"><canvas id="kayan-tuval"></canvas></div>
+        <div id="ayirici-2" class="ayirici" role="separator" aria-label="Kayan nota bölümünün yüksekliğini ayarla"></div>
+        <div id="klavye-bolum" class="panel">
+          <div id="kaydirma">
+            <div id="klavye"></div>
+          </div>
+          <div id="gezinme">
+            <button id="oktav-sol" type="button">◀ Oktav</button>
+            <input id="kaydirici" type="range" min="0" max="100" value="0" step="1">
+            <button id="oktav-sag" type="button">Oktav ▶</button>
+            <div id="boyut-grup">
+              <button id="kucult" type="button" aria-label="Tuşları küçült">−</button>
+              <span id="boyut-yazi">Tuş</span>
+              <button id="buyut" type="button" aria-label="Tuşları büyüt">+</button>
+            </div>
+            <span id="gorunen"></span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -154,6 +220,23 @@
     </section>
   </main>
 
+  <div id="ozet" hidden>
+    <div class="ozet-kart">
+      <h2 id="ozet-baslik">Sonuç</h2>
+      <div id="ozet-puan"></div>
+      <div id="ozet-sayilar"></div>
+      <p id="ozet-egilim"></p>
+      <div id="ozet-zayif"></div>
+      <div id="ozet-gecmis"></div>
+      <p id="ozet-yanit" class="ozet-not"></p>
+      <div class="ozet-dugmeler">
+        <button id="ozet-tekrar" type="button">↻ Tekrar dene</button>
+        <button id="ozet-zayif-calis" type="button">Zayıf ölçüyü çalış</button>
+        <button id="ozet-kapat" type="button">Kapat</button>
+      </div>
+    </div>
+  </div>
+
   <div id="gorunum" hidden>
     <div id="gor-cubuk">
       <button id="gor-geri" type="button" class="gor-dugme">← Geri</button>
@@ -174,10 +257,51 @@
     <div id="gor-alan"></div>
   </div>
 
+  <div id="omr-panel" class="omr-kaplama" hidden>
+    <div class="omr-kutu">
+      <h2 id="omr-baslik">🎼 Notayı oku</h2>
+      <p class="omr-not">Fotoğraf ya da PDF sayfasındaki notaları okuyup düzenlenebilir bir eser yapar. Sonuç bir taslaktır; yanlışları ✏ Düzenle ile düzeltirsin. İlk kullanımda yaklaşık 175 MB indirilir (bir kez).</p>
+      <div id="omr-sayfa-grup" class="omr-satir">
+        <label for="omr-sayfa">PDF sayfa no</label>
+        <input id="omr-sayfa" type="number" min="1" value="1" inputmode="numeric">
+      </div>
+      <div class="omr-satir">
+        <label for="omr-kalite">Kalite</label>
+        <select id="omr-kalite">
+          <option value="hizli">Hızlı (en kısa süre)</option>
+          <option value="dengeli" selected>Dengeli</option>
+          <option value="hassas">Hassas (en yavaş)</option>
+        </select>
+      </div>
+      <div class="omr-satir">
+        <label><input id="omr-egrilik" type="checkbox"> Fotoğraf eğriyse düzelt</label>
+      </div>
+      <progress id="omr-cubuk" max="1" value="0"></progress>
+      <p id="omr-durum" class="omr-durum"></p>
+      <div id="omr-sonuc" hidden>
+        <p id="omr-sonuc-yazi" class="omr-not"></p>
+        <button id="omr-ac" type="button" class="birincil">Çal / düzenle</button>
+      </div>
+      <div id="omr-kayit-kutu" hidden>
+        <button id="omr-kayit-kopyala" type="button">Tanı kaydını kopyala</button>
+        <textarea id="omr-kayit-metin" rows="6" hidden></textarea>
+      </div>
+      <div class="omr-dugmeler">
+        <button id="omr-basla" type="button" class="birincil">Başlat</button>
+        <button id="omr-iptal" type="button">Kapat</button>
+      </div>
+    </div>
+  </div>
+
   <script src="eser.js"></script>
   <script src="porte.js"></script>
   <script src="piyano-ses.js"></script>
   <script src="kutuphane.js"></script>
+  <script src="iceaktar.js"></script>
+  <script src="duzenle.js"></script>
+  <script src="performans.js"></script>
+  <script src="omr.js"></script>
+  <script src="omr-arayuz.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
