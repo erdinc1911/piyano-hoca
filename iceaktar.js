@@ -30,7 +30,27 @@
   /* ---------- ORTAK: ESER NESNESİ KURMA ---------- */
 
   // ham: [{ el, midi, baslangic, sure }] (vuruş cinsinden). Kimlikleri ve sıralamayı kurar.
-  function eserYap(baslik, besteci, pay, payda, tempo, ham, enAzOlcu) {
+  // Pedal olaylarından [basla, bit] aralıkları kurar. olaylar: [{ t, ac }] (vuruş), son: eserin sonu
+  function pedalAraliklari(olaylar, son, hassasiyet) {
+    const g = hassasiyet || 24;
+    const r = (v) => Math.round(v * g) / g;
+    const sirali = olaylar.slice().sort((a, b) => a.t - b.t || (a.ac ? 1 : 0) - (b.ac ? 1 : 0));
+    const aralik = [];
+    let bas = null;
+    sirali.forEach((o) => {
+      if (o.ac && bas === null) bas = o.t;
+      else if (!o.ac && bas !== null) {
+        const a = r(bas);
+        const b = r(o.t);
+        if (b - a >= 0.1) aralik.push([a, b]);
+        bas = null;
+      }
+    });
+    if (bas !== null && son > bas) aralik.push([r(bas), Math.max(r(son), r(bas) + 0.25)]);
+    return aralik;
+  }
+
+  function eserYap(baslik, besteci, pay, payda, tempo, ham, enAzOlcu, pedal) {
     const ov = (pay * 4) / payda;
     const liste = ham
       .filter((n) => n.midi >= ILK_MIDI && n.midi <= SON_MIDI && n.sure > 0 && n.baslangic >= 0)
@@ -44,7 +64,7 @@
       return { id: n.el + '-' + sayac[n.el]++, el: n.el, midi: n.midi, baslangic: bas, sure: sure };
     });
     const olcuSayisi = Math.max(Math.ceil(son / ov - 1e-6), enAzOlcu || 1, 1);
-    return {
+    const eser = {
       surum: 1,
       id: 'nota-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       baslik: baslik,
@@ -54,6 +74,12 @@
       olcuSayisi: olcuSayisi,
       notalar: notalar
     };
+    if (pedal && pedal.length) {
+      const toplam = olcuSayisi * ov;
+      const p = pedal.filter((x) => x[0] >= 0 && x[0] < toplam).map((x) => [x[0], Math.min(x[1], toplam)]).filter((x) => x[1] > x[0]);
+      if (p.length) eser.pedal = p;
+    }
+    return eser;
   }
 
   function bosEser(baslik, pay, payda, tempo, olcuSayisi) {
@@ -79,6 +105,13 @@
       if (!iyi) throw new Error('Notalardan biri geçersiz');
       idler.add(n.id);
     });
+    if (e.pedal !== undefined) {
+      e.pedal = Array.isArray(e.pedal)
+        ? e.pedal.filter((r) => Array.isArray(r) && gecerliSayi(r[0], 0, 100000) && gecerliSayi(r[1], 0, 100000) && r[1] > r[0])
+          .slice(0, 20000).sort((x, y) => x[0] - y[0])
+        : [];
+      if (!e.pedal.length) delete e.pedal;
+    }
     e.baslik = typeof e.baslik === 'string' ? e.baslik.slice(0, 120) : 'Adsız';
     e.besteci = typeof e.besteci === 'string' ? e.besteci.slice(0, 120) : '';
     return e;
@@ -152,6 +185,7 @@
     const olcuSayilari = [];
     let ilkOlcuImplicit = false;
     let atlananSes = 0;
+    const pedalOlay = [];  // { m, p (vuruş), ac }
 
     bolumler.forEach((bolum, bi) => {
       let bolme = 1;
@@ -184,6 +218,21 @@
               if (!akislar[anahtar].isaret) akislar[anahtar].isaret = metin(c, 'sign');
             });
           } else if (ad === 'direction') {
+            Array.from(e.getElementsByTagName('pedal')).forEach((pe) => {
+              const tip = pe.getAttribute('type');
+              const at = pos / bolme;
+              if (tip === 'start') pedalOlay.push({ m: m, p: at, ac: true });
+              else if (tip === 'stop') pedalOlay.push({ m: m, p: at, ac: false });
+              else if (tip === 'change') {
+                pedalOlay.push({ m: m, p: at, ac: false });
+                pedalOlay.push({ m: m, p: at, ac: true });
+              }
+            });
+            Array.from(e.getElementsByTagName('words')).forEach((w) => {
+              const y = (w.textContent || '').trim().toLowerCase();
+              if (y === 'ped.' || y === 'ped' || y === 'con ped.') pedalOlay.push({ m: m, p: pos / bolme, ac: true });
+              else if (y === '*' || y === '✱') pedalOlay.push({ m: m, p: pos / bolme, ac: false });
+            });
             if (!tempo) {
               const ses = e.getElementsByTagName('sound')[0];
               const ta = ses ? parseFloat(ses.getAttribute('tempo')) : 0;
@@ -346,7 +395,13 @@
       tempo = 100;
       uyari.push('Dosyada tempo yoktu, ♩ = 100 kullanıldı. Tempoyu kaydırıcıdan değiştirebilirsin.');
     }
-    const e = eserYap(baslik, besteci, payG, paydaSon, tempo, ham, olcuSayisiToplam);
+    let pedal = [];
+    if (pedalOlay.length) {
+      const olaylar = pedalOlay.map((o) => ({ t: baslangiclar[o.m] + o.p + (o.m === 0 ? kaydirma : 0), ac: o.ac }));
+      pedal = pedalAraliklari(olaylar, t);
+      if (pedal.length) uyari.push(pedal.length + ' pedal işareti alındı.');
+    }
+    const e = eserYap(baslik, besteci, payG, paydaSon, tempo, ham, olcuSayisiToplam, pedal);
     return e;
   }
 
@@ -431,6 +486,7 @@
     let payda = 0;
     const akislar = {};
     let tempoDegisimi = 0;
+    const pedalKaynak = {};   // iz|kanal -> [{ t, ac }]
 
     for (let iz = 0; iz < izSayisi; iz++) {
       if (p + 8 > u8.length || yaziAl(p, 4) !== 'MTrk') break;
@@ -505,6 +561,11 @@
           } else if (komut === 0xc0 || komut === 0xd0) {
             q += 1;
           } else {
+            if (komut === 0xb0 && u8[q] === 64) {
+              const pk = iz + '|' + kanal;
+              if (!pedalKaynak[pk]) pedalKaynak[pk] = [];
+              pedalKaynak[pk].push({ t: tik / bolme, ac: u8[q + 1] >= 64 });
+            }
             q += 2;
           }
         }
@@ -569,7 +630,29 @@
       tempo = 120;
       uyari.push('Dosyada tempo yoktu, ♩ = 120 kullanıldı.');
     }
-    return eserYap(dosyaAdi, '', payG, paydaG, tempo, ham, 1);
+    let pedal = [];
+    const pk = Object.keys(pedalKaynak);
+    if (pk.length) {
+      let son = 0;
+      ham.forEach((n) => { son = Math.max(son, n.baslangic + n.sure); });
+      const birlesik = [];
+      pk.forEach((k) => {
+        pedalAraliklari(pedalKaynak[k], son, yuvarlaIzgara ? 4 : 24).forEach((a) => {
+          birlesik.push({ t: a[0], ac: true });
+          birlesik.push({ t: a[1], ac: false });
+        });
+      });
+      // Birden çok kaynak varsa örtüşenleri birleştir
+      const sirali = birlesik.sort((x, y) => x.t - y.t || (x.ac ? 1 : 0) - (y.ac ? 1 : 0));
+      let sayac = 0;
+      let basT = 0;
+      sirali.forEach((o) => {
+        if (o.ac) { if (sayac === 0) basT = o.t; sayac++; }
+        else { sayac = Math.max(0, sayac - 1); if (sayac === 0 && o.t > basT) pedal.push([basT, o.t]); }
+      });
+      if (pedal.length) uyari.push(pedal.length + ' pedal basışı alındı.');
+    }
+    return eserYap(dosyaAdi, '', payG, paydaG, tempo, ham, 1, pedal);
   }
 
   /* ---------- DOSYADAN ESER ---------- */

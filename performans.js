@@ -36,7 +36,7 @@
   // Çalışma sürerken kilitlenen düğmeler (tempo, ölçü, döngü, el seçimi)
   const KILITLI = [
     'tempo-azalt', 'tempo-artir', 'tempo-kaydirici',
-    'bas-azalt', 'bas-artir', 'son-azalt', 'son-artir', 'bolum-tumu',
+    'bas-azalt', 'bas-artir', 'son-azalt', 'son-artir', 'bolum-tumu', 'bas-yazi', 'son-yazi',
     'dongu', 'el-sag', 'el-sol'
   ];
   const BAR_DUGMELERI = ['dene-bekle', 'dene-tempo', 'dh-0', 'dh-1', 'dh-2', 'dene-metro'];

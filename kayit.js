@@ -24,6 +24,8 @@
     durum: 'bos',        // 'bos' | 'sayim' | 'kayit'
     t0: 0, msQ: 750, pay: 4, payda: 4,
     acik: {},            // midi -> başlangıç (ms)
+    pedalOlay: [],       // { an, basili }
+    pedalIlk: false,
     liste: [],           // { midi, bas, bit }
     zaman: null, sonrakiTik: 0, tikSayisi: 0, birimMs: 750, sayimTik: 0,
     ctx: null
@@ -92,6 +94,37 @@
     });
     const olcuSayisi = Math.min(2000, Math.max(1, Math.ceil(son / ov - 1e-6)));
     return { notalar: notalar, olcuSayisi: olcuSayisi };
+  }
+
+  // olaylar: [{ an, basili }] (ms) -> [[basla, bit], ...] (vuruş, onaltılığa yuvarlı)
+  function pedalCevir(olaylar, ilkDurum, t0, bitisMs, bpm, toplamVurus) {
+    const msQ = 60000 / bpm;
+    const q = (ms) => Math.min(toplamVurus, Math.max(0, Math.round(((ms - t0) / msQ) / KARE) * KARE));
+    const aralik = [];
+    let bas = ilkDurum ? 0 : null;
+    olaylar.slice().sort((a, b) => a.an - b.an).forEach((o) => {
+      if (o.basili && bas === null) bas = q(o.an);
+      else if (!o.basili && bas !== null) {
+        const bit = q(o.an);
+        if (bit > bas) aralik.push([bas, bit]);
+        bas = null;
+      }
+    });
+    if (bas !== null) {
+      const bit = Math.max(q(bitisMs), bas + KARE);
+      if (bit > bas) aralik.push([bas, bit]);
+    }
+    return aralik;
+  }
+
+  // Dışarıdan: pedal basıldı / bırakıldı
+  function pedal(basili, an) {
+    if (K.durum === 'bos') return;
+    if (K.durum === 'sayim' && an < K.t0) {
+      K.pedalIlk = basili;               // sayım sırasında: kayıt başlarken pedalın durumu
+    } else {
+      K.pedalOlay.push({ an: Math.max(an, K.t0), basili: basili });
+    }
   }
 
   /* ---------- METRONOM ---------- */
@@ -172,6 +205,8 @@
     K.sonrakiTik = 0;
     K.acik = {};
     K.liste = [];
+    K.pedalOlay = [];
+    K.pedalIlk = !!(window.pedalDurumu && window.pedalDurumu());
     K.durum = 'sayim';
     try {
       K.ctx = api.baglam ? api.baglam() : null;
@@ -213,6 +248,7 @@
       return;
     }
     const sonuc = notalaraCevir(K.liste, K.t0, A.tempo, K.pay, K.payda);
+    sonuc.pedal = pedalCevir(K.pedalOlay, K.pedalIlk, K.t0, simdi, A.tempo, sonuc.olcuSayisi * (K.pay * 4) / K.payda);
     if (!sonuc.notalar.length) {
       api.mesaj('Hiç nota kaydedilmedi.');
       return;
@@ -224,8 +260,9 @@
       const eser = api.bosEser(ad, K.pay, K.payda, A.tempo, sonuc.olcuSayisi);
       eser.notalar = sonuc.notalar;
       eser.olcuSayisi = sonuc.olcuSayisi;
+      if (sonuc.pedal.length) eser.pedal = sonuc.pedal;
       const id = await api.kaydet(eser);
-      api.mesaj('Kayıt eklendi: ' + sonuc.notalar.length + ' nota, ' + sonuc.olcuSayisi + ' ölçü.');
+      api.mesaj('Kayıt eklendi: ' + sonuc.notalar.length + ' nota, ' + sonuc.olcuSayisi + ' ölçü' + (sonuc.pedal.length ? ', ' + sonuc.pedal.length + ' pedal' : '') + '.');
       api.ac(eser, id);
     } catch (e) {
       api.mesaj('Kayıt eklenemedi: ' + ((e && e.message) || e));
@@ -294,7 +331,8 @@
   window.KAYIT = {
     kur: kur,
     nota: nota,
+    pedal: pedal,
     kaydediyor: () => K.durum !== 'bos',
-    _test: { notalaraCevir: notalaraCevir }
+    _test: { notalaraCevir: notalaraCevir, pedalCevir: pedalCevir }
   };
 })();

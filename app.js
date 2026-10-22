@@ -1,4 +1,4 @@
-const SURUM = 'Aşama 13';
+const SURUM = 'Aşama 14';
 
 const ILK_MIDI = 21;  // La0
 const SON_MIDI = 108; // Do8
@@ -48,6 +48,10 @@ function sesBaslat() {
 // Klavyeden elle çalma: parmak basılı kaldıkça sürer
 function notaCal(midi) {
   sesBaslat();
+  if (pedalBekleyen.has(midi)) {   // pedalla tutulan nota yeniden basıldı: eskisini bırak
+    pedalBekleyen.delete(midi);
+    notaBirakGercek(midi);
+  }
   if (sesler[midi]) return;
 
   const t = ctx.currentTime;
@@ -102,8 +106,46 @@ function notaCal(midi) {
   }
 }
 
-// Tuş bırakılınca ses ani kesilmez, yumuşakça söner
+// ---- Sustain pedalı ----
+let pedalBasili = false;
+let pedalSesiAcik = true;          // otomatik çalarken eserdeki pedal bilgisini uygula
+const pedalBekleyen = new Set();   // pedal yüzünden sönmeden bekleyen notalar
+
+function pedalAyarla(basili, an) {
+  basili = !!basili;
+  if (basili === pedalBasili) return;
+  pedalBasili = basili;
+  if (!basili) {
+    Array.from(pedalBekleyen).forEach((m) => notaBirakGercek(m));
+    pedalBekleyen.clear();
+  }
+  const d = document.getElementById('btn-pedal');
+  if (d) d.classList.toggle('acik', basili);
+  if (window.KAYIT) KAYIT.pedal(basili, an || performance.now());
+}
+window.pedalAyarla = pedalAyarla;
+window.pedalDurumu = () => pedalBasili;
+
+// Eserin pedal aralıklarından, verilen vuruşta basılı olanın bitişini döndürür (yoksa null)
+function pedalBitisi(vurus) {
+  const p = aktifEser && aktifEser.pedal;
+  if (!p) return null;
+  for (let i = 0; i < p.length; i++) {
+    if (p[i][0] < vurus - 1e-6 && vurus <= p[i][1] + 1e-6) return p[i][1];
+  }
+  return null;
+}
+
 function notaBirak(midi) {
+  if (pedalBasili && sesler[midi]) {
+    pedalBekleyen.add(midi);
+    return;
+  }
+  notaBirakGercek(midi);
+}
+
+// Tuş bırakılınca ses ani kesilmez, yumuşakça söner
+function notaBirakGercek(midi) {
   const s = sesler[midi];
   if (!s || !ctx) return;
   const t = ctx.currentTime;
@@ -745,13 +787,14 @@ function olaylariHazirla() {
   cal.uzunluk = son - bas;
   cal.olaylar = aktifEser.notalar
     .filter((n) => elGorunum[n.el] && n.baslangic >= bas - 1e-6 && n.baslangic < son - 1e-6)
-    .map((n) => ({
-      id: n.id,
-      el: n.el,
-      midi: n.midi,
-      b: n.baslangic - bas,
-      sure: Math.min(n.sure, son - n.baslangic)
-    }))
+    .map((n) => {
+      let sure = Math.min(n.sure, son - n.baslangic);
+      if (pedalSesiAcik && sure >= n.sure - 1e-6) {
+        const pb = pedalBitisi(n.baslangic + n.sure);
+        if (pb !== null) sure = Math.min(pb - n.baslangic, n.sure + 16);
+      }
+      return { id: n.id, el: n.el, midi: n.midi, b: n.baslangic - bas, sure: sure, gorunenSure: Math.min(n.sure, son - n.baslangic) };
+    })
     .sort((a, b) => a.b - b.b);
 }
 
@@ -843,6 +886,7 @@ function calmaDurdur(sesiKes) {
   if (sesiKes !== false) programliSesleriKes();
   cal.durum = 'durdu';
   cal.duraklatVB = 0;
+  pedalGostergeGuncelle(-1);
   vurguUygula([]);
   porteCizgisiniKoy(null);
   document.getElementById('olcu-gosterge').textContent = '';
@@ -898,8 +942,9 @@ function cizimDongusu() {
   let pos = 0;
   if (len > 0) pos = (!donguAcik && vb >= len) ? len : vb % len;
 
-  const calan = cal.olaylar.filter((o) => o.b <= pos + 1e-6 && pos < o.b + o.sure - 1e-6);
+  const calan = cal.olaylar.filter((o) => o.b <= pos + 1e-6 && pos < o.b + o.gorunenSure - 1e-6);
   vurguUygula(calan);
+  pedalGostergeGuncelle(cal.baslangic + pos);
 
   kayanCiz(pos);
 
@@ -912,6 +957,39 @@ function cizimDongusu() {
   document.getElementById('olcu-gosterge').textContent = 'Ölçü ' + olcu;
 
   cal.raf = requestAnimationFrame(cizimDongusu);
+}
+
+// Otomatik çalarken eserdeki pedal durumunu düğmede göster
+function pedalGostergeGuncelle(genel) {
+  const d = document.getElementById('btn-pedal');
+  if (!d) return;
+  const acik = pedalSesiAcik && pedalBitisi(genel + 1e-3) !== null;
+  d.classList.toggle('otomatik', acik);
+  if (!pedalBasili) d.classList.toggle('acik', acik);
+}
+
+function pedalKur() {
+  const d = document.getElementById('btn-pedal');
+  const ayar = document.getElementById('pedal-ses');
+  try { if (localStorage.getItem('piyano-pedal-ses') === '0') pedalSesiAcik = false; } catch (e) {}
+  const yaz = () => { ayar.textContent = 'Pedal sesi: ' + (pedalSesiAcik ? 'açık' : 'kapalı'); ayar.classList.toggle('aktif-ayar', pedalSesiAcik); };
+  yaz();
+  ayar.addEventListener('click', () => {
+    pedalSesiAcik = !pedalSesiAcik;
+    try { localStorage.setItem('piyano-pedal-ses', pedalSesiAcik ? '1' : '0'); } catch (e) {}
+    yaz();
+    if (cal.durum === 'caliyor' || cal.durum === 'duraklat') {
+      const vb = Math.max(vbSimdi(), 0);
+      olaylariHazirla();
+      if (cal.durum === 'caliyor') konumdanYenidenKur(cal.uzunluk > 0 ? vb % cal.uzunluk : 0, true, 0);
+    }
+  });
+  const bas = (e) => { e.preventDefault(); try { d.setPointerCapture(e.pointerId); } catch (x) {} pedalAyarla(true); };
+  const birak = (e) => { e.preventDefault(); pedalAyarla(false); };
+  d.addEventListener('pointerdown', bas);
+  d.addEventListener('pointerup', birak);
+  d.addEventListener('pointercancel', birak);
+  d.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 function dugmeleriGuncelle() {
@@ -961,8 +1039,58 @@ function tempoDegistir(yeni) {
 }
 
 function bolumYaz() {
-  document.getElementById('bas-yazi').textContent = bolumBas;
-  document.getElementById('son-yazi').textContent = bolumSon;
+  const b = document.getElementById('bas-yazi');
+  const s = document.getElementById('son-yazi');
+  if (document.activeElement !== b) b.value = bolumBas;
+  if (document.activeElement !== s) s.value = bolumSon;
+  s.max = b.max = String(aktifEser.olcuSayisi);
+}
+
+// Porteyi elle kaydırınca, soldaki ölçü çalmanın başlangıcı olur
+function porteKaydirmaKur() {
+  const kutu = document.getElementById('porte-kutu');
+  let elde = false;
+  let birakZaman = null;
+  let bitirZaman = null;
+
+  const basla = () => {
+    elde = true;
+    clearTimeout(birakZaman);
+  };
+  const birak = () => {
+    clearTimeout(birakZaman);
+    birakZaman = setTimeout(() => { elde = false; }, 800);
+  };
+  ['pointerdown', 'touchstart'].forEach((o) => kutu.addEventListener(o, basla, { passive: true }));
+  ['pointerup', 'pointercancel', 'touchend', 'touchcancel'].forEach((o) => kutu.addEventListener(o, birak, { passive: true }));
+  kutu.addEventListener('wheel', () => { basla(); birak(); }, { passive: true });
+
+  function soldakiOlcu() {
+    const ov = olcuVurusu();
+    const vurus = (kutu.scrollLeft / porteOlcek - PORTE_AYAR.sol) / PORTE_AYAR.vurus;
+    const poz = vurus / ov;
+    if (poz <= 0) return 1;
+    const m = Math.floor(poz);
+    const olcu = (poz - m < 0.4 ? m : m + 1) + 1;
+    return Math.min(Math.max(olcu, 1), aktifEser.olcuSayisi);
+  }
+
+  kutu.addEventListener('scroll', () => {
+    if (!elde || cal.durum === 'caliyor') return;
+    if (window.PERF && PERF.sahne()) return;
+    const m = soldakiOlcu();
+    if (m === bolumBas) return;
+    bolumBas = m;
+    if (bolumBas > bolumSon) bolumSon = aktifEser.olcuSayisi;
+    bolumYaz();
+    porteGolgeGuncelle(kutu, aktifEser, bolumBas, bolumSon);
+    clearTimeout(bitirZaman);
+    bitirZaman = setTimeout(() => {
+      calmaDurdur();
+      kayanYenile();
+      document.getElementById('nota-bilgi').textContent = 'Başlangıç: ölçü ' + bolumBas;
+    }, 250);
+  });
 }
 
 function bolumDegisti() {
@@ -1003,6 +1131,35 @@ function calmaKur() {
     bolumSon = Math.min(n(), bolumSon + 1);
     bolumDegisti();
   });
+  // Ölçü numarasını klavyeyle yazma
+  const sayiGir = (id, uygula) => {
+    const e = $(id);
+    e.addEventListener('focus', () => e.select());
+    const bitir = () => {
+      const v = parseInt(e.value, 10);
+      if (isFinite(v)) {
+        uygula(Math.min(Math.max(v, 1), n()));
+        bolumDegisti();
+      }
+      e.value = id === 'bas-yazi' ? bolumBas : bolumSon;
+    };
+    e.addEventListener('change', bitir);
+    e.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        e.blur();
+      }
+    });
+  };
+  sayiGir('bas-yazi', (v) => {
+    bolumBas = v;
+    if (bolumBas > bolumSon) bolumSon = bolumBas;
+  });
+  sayiGir('son-yazi', (v) => {
+    bolumSon = v;
+    if (bolumSon < bolumBas) bolumBas = bolumSon;
+  });
+
   $('bolum-tumu').addEventListener('click', () => {
     bolumBas = 1;
     bolumSon = n();
@@ -1769,12 +1926,14 @@ window.addEventListener('offline', durumGuncelle);
 klavyeOlustur();
 cekmeceKur();
 dokunmaKur();
+pedalKur();
 gezinmeKur();
 eserBasligiYaz();
 elDugmeleriKur();
 porteYenile();
 if (klavyeKontrol) klavyeKontrol.sigdir(aktifEser);
 calmaKur();
+porteKaydirmaKur();
 panelDuzeniKur();
 kayanKur();
 performansKur();

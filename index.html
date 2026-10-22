@@ -33,6 +33,14 @@
         </div>
 
         <div class="kart">
+          <p class="buyuk">Hazır eserler <span id="hz-sayi" class="hz-sayi"></span></p>
+          <p class="ipucu">Uygulamaya gömülüdür, internetsiz de açılır. Besteciler telif süresi dolmuş (kamu malı) bestecilerdir. Notalar, sahipleri tarafından "CC0 / Kamu Malı" olarak paylaşıldığı bildirilen MuseScore kayıtlarından (PDMX veri kümesi) alınmıştır. Kayıtlar kullanıcılar tarafından hazırlandığı için bazı yerlerde hata olabilir. Hukuki bir garanti verilmez; bir sorun ya da hak talebi görürsen <a href="mailto:erdinc1911@gmail.com">erdinc1911@gmail.com</a> adresine bildir, ilgili eser listeden hemen kaldırılır. "Aç" ile çalma ekranında dene, "Kütüphaneme ekle" ile kopyasını alıp ✏ Düzenle ile düzelt.</p>
+          <input id="hz-ara" class="hz-ara" type="search" placeholder="Besteci ya da eser ara (ör. Chopin)">
+          <p id="hz-mesaj" class="mesaj"></p>
+          <div id="hz-liste"></div>
+        </div>
+
+        <div class="kart">
           <p class="buyuk">Kendi eserlerin</p>
           <p class="ipucu">PDF, JPG ve PNG nota dosyaları eklenir ve görüntülenir. MusicXML (.musicxml, .xml, .mxl) ve MIDI (.mid) dosyaları ise çalınabilir eser olarak eklenir: porte, kayan nota, tempo, döngü, "Dene" ve ✏ Düzenle onlarla da çalışır. Hepsi bu cihazda saklanır ve internetsiz açılır. PDF ve fotoğraflardaki notalar henüz çalınamaz. Dosya başına en fazla 50 MB.</p>
           <button id="btn-eser-ekle" type="button">＋ Eser ekle</button>
@@ -111,11 +119,11 @@
           <div class="grup">
             <span class="etiket">Ölçü</span>
             <button id="bas-azalt" type="button" class="kucuk">−</button>
-            <span id="bas-yazi" class="sayi">1</span>
+            <input id="bas-yazi" class="sayi-giris" type="number" inputmode="numeric" min="1" value="1" aria-label="Başlangıç ölçüsü">
             <button id="bas-artir" type="button" class="kucuk">+</button>
             <span class="etiket">–</span>
             <button id="son-azalt" type="button" class="kucuk">−</button>
-            <span id="son-yazi" class="sayi">8</span>
+            <input id="son-yazi" class="sayi-giris" type="number" inputmode="numeric" min="1" value="8" aria-label="Bitiş ölçüsü">
             <button id="son-artir" type="button" class="kucuk">+</button>
             <button id="bolum-tumu" type="button" class="kucuk genis">Tümü</button>
           </div>
@@ -159,6 +167,7 @@
         </section>
         <section class="cek-bolum">
           <h3>Çalışma</h3>
+          <button id="pedal-ses" type="button" class="cal-dugme aktif-ayar">Pedal sesi: açık</button>
           <button id="btn-dene" type="button" class="cal-dugme">🎯 Dene</button>
           <button id="btn-duzenle" type="button" class="cal-dugme">✏ Düzenle</button>
         </section>
@@ -226,6 +235,7 @@
             <button id="oktav-sol" type="button">◀ Oktav</button>
             <input id="kaydirici" type="range" min="0" max="100" value="0" step="1">
             <button id="oktav-sag" type="button">Oktav ▶</button>
+            <button id="btn-pedal" type="button" aria-label="Sustain pedalı (basılı tut)">Pedal</button>
             <div id="boyut-grup">
               <button id="kucult" type="button" aria-label="Tuşları küçült">−</button>
               <span id="boyut-yazi">Tuş</span>
@@ -326,6 +336,7 @@
   <script src="performans.js"></script>
   <script src="giris.js"></script>
   <script src="kayit.js"></script>
+  <script src="hazir.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

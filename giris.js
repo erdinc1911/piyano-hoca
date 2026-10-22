@@ -56,6 +56,10 @@
     const simdi = performance.now();
     if (!(an > 0) || Math.abs(an - simdi) > 2000 || an > simdi) an = simdi;
 
+    if (komut === 0xb0 && nota === 64) {   // sustain pedalı
+      if (window.pedalAyarla) window.pedalAyarla(hiz >= 64, an);
+      return;
+    }
     if (komut === 0x90 && hiz > 0) {
       api.bas(nota, an, 'midi');
       M.son = notaAdi(nota) + ' (hız ' + hiz + ')';

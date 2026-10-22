@@ -1,7 +1,7 @@
-const SURUM = 'piyano-hoca-asama13-v1';
+const SURUM = 'piyano-hoca-asama14-v5';
 const DOSYALAR = [
   './', 'index.html', 'style.css', 'app.js', 'eser.js', 'porte.js', 'piyano-ses.js',
-  'kutuphane.js', 'iceaktar.js', 'duzenle.js', 'performans.js', 'giris.js', 'kayit.js', 'manifest.json', 'icon.svg'
+  'kutuphane.js', 'iceaktar.js', 'duzenle.js', 'performans.js', 'giris.js', 'kayit.js', 'hazir.js', 'eserler.json', 'manifest.json', 'icon.svg'
 ];
 
 self.addEventListener('install', (e) => {

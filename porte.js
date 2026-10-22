@@ -11,7 +11,7 @@ const PORTE_AYAR = {
   vurus: 60,        // bir dörtlük vuruşun genişliği (piksel)
   sol: 100,         // anahtar ve ölçü işareti için soldaki boşluk
   sagBosluk: 24,
-  yukseklik: 290
+  yukseklik: 322
 };
 
 const PORTELER = {
@@ -312,6 +312,27 @@ function sapKirisCiz(svg, parcalar, olcu) {
   });
 }
 
+// Bölüm gölgesini yerleştirir (tüm eser seçiliyse gizler)
+function golgeKoy(golge, eser, bBas, bSon) {
+  const A = PORTE_AYAR;
+  const olcuVurus = eser.olcu.pay * 4 / eser.olcu.payda;
+  if (bBas > 1 || bSon < eser.olcuSayisi) {
+    const gx1 = A.sol + (bBas - 1) * olcuVurus * A.vurus;
+    const gx2 = A.sol + bSon * olcuVurus * A.vurus;
+    golge.setAttribute('x', gx1);
+    golge.setAttribute('width', gx2 - gx1);
+    golge.setAttribute('visibility', 'visible');
+  } else {
+    golge.setAttribute('visibility', 'hidden');
+  }
+}
+
+// Porteyi yeniden çizmeden yalnızca bölüm gölgesini günceller
+function porteGolgeGuncelle(kutu, eser, bBas, bSon) {
+  const g = kutu.querySelector('.bolum-golge');
+  if (g) golgeKoy(g, eser, bBas, bSon);
+}
+
 /*
   porteCiz(kutu, eser, sec)
   sec = {
@@ -338,18 +359,14 @@ function porteCiz(kutu, eser, sec) {
 
   const altPorteAlt = PORTELER.sol.ust + 4 * A.aralik;
 
-  // Seçili bölümün gölgesi (tüm eser seçiliyse çizilmez)
-  const bBas = sec.bolumBas || 1;
-  const bSon = sec.bolumSon || eser.olcuSayisi;
-  if (bBas > 1 || bSon < eser.olcuSayisi) {
-    const gx1 = A.sol + (bBas - 1) * olcuVurus * A.vurus;
-    const gx2 = A.sol + bSon * olcuVurus * A.vurus;
-    svgEl('rect', {
-      x: gx1, y: PORTELER.sag.ust - 26,
-      width: gx2 - gx1, height: altPorteAlt - PORTELER.sag.ust + 52,
-      fill: 'rgba(255, 200, 0, 0.18)'
-    }, svg);
-  }
+  // Seçili bölümün gölgesi (tüm eser seçiliyse görünmez; kaydırırken yalnızca bu şekil güncellenir)
+  const golge = svgEl('rect', {
+    'class': 'bolum-golge',
+    y: PORTELER.sag.ust - 26,
+    height: altPorteAlt - PORTELER.sag.ust + 52,
+    fill: 'rgba(255, 200, 0, 0.18)'
+  }, svg);
+  golgeKoy(golge, eser, sec.bolumBas || 1, sec.bolumSon || eser.olcuSayisi);
 
   // Porte çizgileri, anahtar harfleri, ölçü işareti
   ['sag', 'sol'].forEach((ad) => {
@@ -406,6 +423,24 @@ function porteCiz(kutu, eser, sec) {
     });
   });
   sapKirisCiz(svg, parcalar, eser.olcu);
+
+  // Pedal işaretleri (alt porte altında: Ped. ____/\____ *)
+  if (Array.isArray(eser.pedal) && eser.pedal.length) {
+    const py = altPorteAlt + 66;
+    eser.pedal.forEach((r) => {
+      const x1 = A.sol + r[0] * A.vurus + 22;
+      const x2 = Math.max(A.sol + r[1] * A.vurus + 22, x1 + 14);
+      svgYazi(svg, 'Ped.', {
+        x: x1, y: py + 4, 'font-size': 14, 'font-style': 'italic',
+        'font-family': 'Georgia, serif', 'font-weight': 'bold', fill: '#7a5a1a'
+      });
+      const ba = x1 + 30;
+      if (x2 > ba + 6) {
+        svgCizgi(svg, ba, py, x2, py, '#7a5a1a', 1.5);
+        svgCizgi(svg, x2, py, x2, py - 8, '#7a5a1a', 1.5);
+      }
+    });
+  }
 
   // İlerleme çizgisi (en üstte, başta gizli)
   PORTE_CIZGI = svgEl('line', {

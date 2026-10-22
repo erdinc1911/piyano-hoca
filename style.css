@@ -1393,3 +1393,40 @@ header h1 {
 #nota-bilgi .bilgi-sol { color: #ffae5c; }
 .nota.el-sag.calan .vurgu { fill: rgba(79, 143, 224, 0.35); stroke: #4f8fe0; stroke-width: 2.5; }
 .nota.el-sol.calan .vurgu { fill: rgba(217, 137, 58, 0.4); stroke: #d9893a; stroke-width: 2.5; }
+
+/* Ölçü numarası yazma kutuları */
+.sayi-giris {
+  width: 4.2em;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+  background: var(--yuzey-2);
+  color: var(--yazi);
+  border: 1px solid var(--cizgi);
+  border-radius: 8px;
+  padding: 6px 4px;
+  -moz-appearance: textfield;
+}
+.sayi-giris::-webkit-outer-spin-button,
+.sayi-giris::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sayi-giris:focus { outline: none; border-color: var(--altin); }
+.sayi-giris:disabled { opacity: 0.45; }
+
+/* Hazır eserler */
+.hz-sayi { font-size: 0.85rem; opacity: 0.6; margin-left: 6px; }
+.hz-ara { width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 12px; border-radius: 10px; border: 1px solid #34345a; background: #1a1a30; color: #fff; font-size: 1rem; }
+.hz-besteci { margin: 14px 0 6px !important; color: #c9a45c; font-weight: 600; letter-spacing: 0.04em; }
+.hz-satir { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid #34345a; }
+.hz-bilgi { flex: 1 1 220px; min-width: 0; }
+.hz-bilgi b { display: block; font-weight: 600; }
+.hz-bilgi span { font-size: 0.85rem; opacity: 0.7; }
+.hz-dugme { display: flex; gap: 8px; }
+.kart .hz-dugme button { width: auto; margin: 0; padding: 10px 16px; font-size: 0.95rem; }
+.kart .hz-dugme button.ikinci { background: #34345a; }
+#hz-liste { max-height: 60vh; overflow-y: auto; }
+
+/* Pedal */
+#btn-pedal { background: #2a2a45; color: #e8e8f0; border: 1px solid #44446a; border-radius: 10px; padding: 8px 16px; font-size: 0.95rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+#btn-pedal.acik { background: #c9a45c; color: #1a1a20; border-color: #c9a45c; font-weight: 700; }
+#btn-pedal.otomatik { box-shadow: 0 0 0 2px #c9a45c inset; }
+.cal-dugme.aktif-ayar { border-color: #c9a45c; }
