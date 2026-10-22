@@ -1,4 +1,4 @@
-const SURUM = 'piyano-hoca-asama14-v5';
+const SURUM = 'piyano-hoca-asama14-v6';
 const DOSYALAR = [
   './', 'index.html', 'style.css', 'app.js', 'eser.js', 'porte.js', 'piyano-ses.js',
   'kutuphane.js', 'iceaktar.js', 'duzenle.js', 'performans.js', 'giris.js', 'kayit.js', 'hazir.js', 'eserler.json', 'manifest.json', 'icon.svg'

@@ -1430,3 +1430,14 @@ header h1 {
 #btn-pedal.acik { background: #c9a45c; color: #1a1a20; border-color: #c9a45c; font-weight: 700; }
 #btn-pedal.otomatik { box-shadow: 0 0 0 2px #c9a45c inset; }
 .cal-dugme.aktif-ayar { border-color: #c9a45c; }
+
+/* Yardım */
+.yardim ol, .yardim ul { margin: 0 0 10px 20px; line-height: 1.6; }
+.yardim li { margin-bottom: 6px; }
+.yardim details { border-top: 1px solid #34345a; padding: 4px 0; }
+.yardim details:first-of-type { border-top: none; }
+.yardim summary { cursor: pointer; padding: 12px 0; font-weight: 600; list-style: none; }
+.yardim summary::-webkit-details-marker { display: none; }
+.yardim summary::before { content: '▸'; display: inline-block; width: 1.2em; color: #c9a45c; }
+.yardim details[open] > summary::before { content: '▾'; }
+.yardim a { color: #c9a45c; }

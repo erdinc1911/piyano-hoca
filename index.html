@@ -16,6 +16,7 @@
       <button type="button" class="sekme-dugme" data-sekme="kutuphane">📚 Kütüphane</button>
       <button type="button" class="sekme-dugme aktif" data-sekme="cal">🎹 Çal</button>
       <button type="button" class="sekme-dugme" data-sekme="ayarlar">⚙ Ayarlar</button>
+      <button type="button" class="sekme-dugme" data-sekme="yardim">❓ Yardım</button>
     </nav>
     <span id="durum"></span>
   </header>
@@ -243,6 +244,124 @@
             </div>
             <span id="gorunen" hidden></span>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sekme-yardim" class="sekme">
+      <div class="sayfa yardim">
+        <h2>Yardım</h2>
+
+        <div class="kart">
+          <p class="buyuk">Hızlı başlangıç</p>
+          <ol>
+            <li><b>📚 Kütüphane</b> sekmesinde "Hazır eserler"den bir eser seç ve <b>Aç</b>'a bas.</li>
+            <li><b>🎹 Çal</b> sekmesi açılır. Üstte porte (nota), ortada kayan notalar, altta klavye görünür.</li>
+            <li><b>▶ Çal</b>'a bas: eser kendi çalar. Tempoyu − / + ile yavaşlat.</li>
+            <li>Kendin çalmak için ekrandaki tuşlara dokun. Kayan notalar tuşa ulaşınca basarsan eserle birlikte çalmış olursun.</li>
+          </ol>
+          <p class="ipucu">Sağ üstteki <b>☰</b> düğmesi kenar menüyü açar: bölüm seçme, giriş türü, kayıt ve düzenleme orada.</p>
+        </div>
+
+        <div class="kart">
+          <p class="buyuk">Konular</p>
+
+          <details>
+            <summary>Çalma, tempo ve el seçimi</summary>
+            <ul>
+              <li><b>Sağ el / Sol el</b> düğmeleriyle istediğin eli kapat. Sadece bir elini çalışmak için kullan. Kapalı elin notaları duyulmaz.</li>
+              <li><b>Tempo:</b> − / + ya da kaydırıcı. Yavaş başlayıp yavaş yavaş hızlandırmak en iyisidir.</li>
+              <li><b>Renkler:</b> Mavi sağ el, turuncu sol el. Çalan notalar tuşlarda, portede ve kayan notalarda aynı renkle yanar.</li>
+              <li><b>Porteyi elle kaydırırsan</b> çalma kaydırdığın yerden başlar.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Çalınacak bölüm ve döngü</summary>
+            <ul>
+              <li>☰ menüsündeki <b>Çalınacak bölüm</b> kutularına başlangıç ve bitiş ölçü numarasını yaz. Uzun eserlerde en kolay yol budur.</li>
+              <li><b>Döngü</b> açıksa seçtiğin bölüm tekrar tekrar çalar. Zor bir yeri çalışmak için ideal.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Klavye ve giriş türü (ekran, MIDI, mikrofon)</summary>
+            <ul>
+              <li><b>Ekran:</b> Dokunmatik klavye. Aynı anda birkaç parmakla çalabilirsin.</li>
+              <li><b>MIDI piyano:</b> Piyanonu USB ile tablete bağla ve piyanoyu aç. ☰ menüsünde <b>Giriş → MIDI klavye</b> seç. Pedalın da çalışır.</li>
+              <li><b>Mikrofon:</b> Akustik piyanoyu mikrofonla dinler ve notaları tanır. Sessiz bir odada ve mikrofona yakın çalarken daha doğru sonuç verir. Her akoru tanımayabilir.</li>
+              <li><b>Klavyeyi sığdır:</b> Klavyeyi eserin oktav aralığına ayarlar, sağa sola kaydırmak gerekmez.</li>
+              <li><b>Oktav ◀ ▶</b> ve kaydırıcı ile klavyede gezinebilirsin. Tuş boyutunu − / + ile değiştir.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Pedal</summary>
+            <ul>
+              <li>Klavyenin altındaki <b>Pedal</b> düğmesine basılı tutarsan notalar sönmeden uzar.</li>
+              <li>MIDI piyanonun pedalı kendiliğinden çalışır.</li>
+              <li>Eserde pedal bilgisi varsa porte altında "Ped." işaretleri görünür ve eser çalarken pedal otomatik uygulanır. ☰ menüsündeki <b>Pedal sesi</b> ile kapatabilirsin.</li>
+              <li>Hazır eserlerde pedalı olanların yanında 🦶 yazar.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Çaldığını notaya yaz</summary>
+            <ul>
+              <li>☰ menüsünde tempoyu ve ölçüyü seç, <b>Kaydı başlat</b>'a bas.</li>
+              <li>Bir ölçü sayım yapılır, sonra çalmaya başla. Bitirince <b>Bitir</b>'e bas.</li>
+              <li>Notalar yeni bir eser olarak kütüphaneye eklenir. Ritim en yakın onaltılık vuruşa yuvarlanır. Yanlışları ✏ Düzenle ile düzeltebilirsin.</li>
+              <li>Pedal kullandıysan o da kaydedilir.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>🎯 Dene ve ✏ Düzenle</summary>
+            <ul>
+              <li><b>Dene:</b> Eseri çalarken ne kadar doğru çaldığını kontrol eder.</li>
+              <li><b>Düzenle:</b> Notaları ekle, sil, taşı, uzunluğunu ve elini değiştir. Hazır bir eseri düzeltmek için önce <b>Kütüphaneme ekle</b> ile kopyasını al.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Kendi eserini ekleme</summary>
+            <ul>
+              <li><b>Kütüphane → ＋ Eser ekle</b> ile dosya seç.</li>
+              <li><b>MusicXML (.musicxml, .xml, .mxl) ve MIDI (.mid):</b> Çalınabilir. Porte, kayan nota, tempo, döngü ve düzenleme bunlarla çalışır.</li>
+              <li><b>PDF ve fotoğraf:</b> Sadece görüntülenir, çalınamaz.</li>
+              <li>MusicXML en doğru sonucu verir. MIDI'de el ayrımı ve ritim tahminidir.</li>
+              <li><b>＋ Boş eser oluştur</b> ile notaları kendin yazabilirsin.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Yedekleme</summary>
+            <ul>
+              <li>Eserlerin sadece bu cihazın tarayıcısında saklanır. Tarayıcı verisi silinirse kaybolabilir.</li>
+              <li><b>Kütüphane → Tüm kütüphaneyi yedekle</b> ile bir yedek dosyası indir ve başka bir yerde de sakla. <b>Yedekten geri yükle</b> ile geri getir.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Sık karşılaşılan sorunlar</summary>
+            <ul>
+              <li><b>Ses gelmiyor:</b> Cihazın sesini aç, sessiz modda olmadığından emin ol. Sayfada bir kez dokun (tarayıcılar sesi dokunuştan sonra açar).</li>
+              <li><b>Ses yapay geliyor:</b> Ayarlar'dan gerçek piyano seslerini indir (yaklaşık 5,4 MB, bir kez).</li>
+              <li><b>Mikrofon çalışmıyor:</b> Tarayıcıdan mikrofon iznini ver. Sayfa her açıldığında izin yeniden istenebilir.</li>
+              <li><b>MIDI cihazı görünmüyor:</b> Kabloyu çıkarıp tak, piyanonun açık olduğunu kontrol et. Tarayıcı olarak Chrome ya da Brave kullan.</li>
+              <li><b>Hazır eserler yüklenmiyor:</b> İlk açılışta internet gerekir. Sonra internetsiz de açılır.</li>
+              <li><b>Yeni sürüm gelmedi:</b> Sayfayı iki kez yenile.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Hazır eserler ve telif</summary>
+            <ul>
+              <li>Besteciler telif süresi dolmuş (kamu malı) bestecilerdir.</li>
+              <li>Notalar, sahipleri tarafından "CC0 / Kamu Malı" olarak paylaşıldığı bildirilen MuseScore kayıtlarından alınmıştır. Kullanıcılar tarafından hazırlandığı için bazı yerlerde hata olabilir.</li>
+              <li>Bir sorun ya da hak talebi için: <a href="mailto:erdinc1911@gmail.com">erdinc1911@gmail.com</a></li>
+            </ul>
+          </details>
         </div>
       </div>
     </section>
