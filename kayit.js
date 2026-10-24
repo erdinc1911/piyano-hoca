@@ -12,8 +12,8 @@
 
   const ANAHTAR = 'piyano-kayit';
   const OLCULER = { '4/4': [4, 4], '3/4': [3, 4], '2/4': [2, 4], '6/8': [6, 8] };
-  const SURELER = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
-  const KARE = 0.25;               // en küçük zaman birimi (onaltılık)
+  const SURELER = [0.125, 0.25, 0.375, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
+  const KARE = 0.125;              // en küçük zaman birimi (otuzikilik)
   const ONCE_PAYI = 120;           // ms: sayımın son anında biraz erken basılan nota kabul edilir
 
   const $ = (id) => document.getElementById(id);
@@ -24,6 +24,7 @@
     durum: 'bos',        // 'bos' | 'sayim' | 'kayit'
     t0: 0, msQ: 750, pay: 4, payda: 4,
     acik: {},            // midi -> başlangıç (ms)
+    hizlar: {},          // midi -> basış şiddeti (1-127)
     pedalOlay: [],       // { an, basili }
     pedalIlk: false,
     liste: [],           // { midi, bas, bit }
@@ -68,7 +69,7 @@
       const bitQ = Math.max(baslaQ, (o.bit - t0) / msQ);
       const bas = Math.round(baslaQ / KARE) * KARE;
       const sure = yakinSure(Math.max(bitQ - baslaQ, KARE));
-      ham.push({ midi: o.midi, bas: bas, sure: sure });
+      ham.push({ midi: o.midi, bas: bas, sure: sure, v: o.v });
     });
     ham.sort((a, b) => a.bas - b.bas || a.midi - b.midi);
 
@@ -90,7 +91,9 @@
     const notalar = iyi.map((n) => {
       const el = n.midi >= 60 ? 'sag' : 'sol';
       if (n.bas + n.sure > son) son = n.bas + n.sure;
-      return { id: el + '-' + sayac[el]++, el: el, midi: n.midi, baslangic: n.bas, sure: n.sure };
+      const nesne = { id: el + '-' + sayac[el]++, el: el, midi: n.midi, baslangic: n.bas, sure: n.sure };
+      if (n.v >= 1 && n.v <= 127) nesne.v = Math.round(n.v);
+      return nesne;
     });
     const olcuSayisi = Math.min(2000, Math.max(1, Math.ceil(son / ov - 1e-6)));
     return { notalar: notalar, olcuSayisi: olcuSayisi };
@@ -204,6 +207,7 @@
     K.t0 = K.sayimBas + K.vurusOlcuda * K.birimMs;
     K.sonrakiTik = 0;
     K.acik = {};
+    K.hizlar = {};
     K.liste = [];
     K.pedalOlay = [];
     K.pedalIlk = !!(window.pedalDurumu && window.pedalDurumu());
@@ -237,7 +241,7 @@
     const sayimdaydi = K.durum === 'sayim';
     durdur();
     Object.keys(K.acik).forEach((m) => {
-      K.liste.push({ midi: Number(m), bas: K.acik[m], bit: simdi });
+      K.liste.push({ midi: Number(m), bas: K.acik[m], bit: simdi, v: K.hizlar[m] });
     });
     K.acik = {};
     K.durum = 'bos';
@@ -270,7 +274,7 @@
   }
 
   // Dışarıdan: bir nota başladı (acik = true) ya da bitti (acik = false)
-  function nota(midi, an, acik) {
+  function nota(midi, an, acik, hiz) {
     if (K.durum === 'bos') return;
     if (acik) {
       if (K.durum === 'sayim') {
@@ -278,13 +282,15 @@
         an = K.t0;
       }
       if (K.acik[midi] !== undefined) {
-        K.liste.push({ midi: midi, bas: K.acik[midi], bit: an });
+        K.liste.push({ midi: midi, bas: K.acik[midi], bit: an, v: K.hizlar[midi] });
       }
       K.acik[midi] = an;
+      K.hizlar[midi] = hiz > 0 ? hiz : undefined;
     } else {
       if (K.acik[midi] === undefined) return;
-      K.liste.push({ midi: midi, bas: K.acik[midi], bit: Math.max(an, K.acik[midi]) });
+      K.liste.push({ midi: midi, bas: K.acik[midi], bit: Math.max(an, K.acik[midi]), v: K.hizlar[midi] });
       delete K.acik[midi];
+      delete K.hizlar[midi];
     }
   }
 

@@ -46,7 +46,13 @@ function sesBaslat() {
 }
 
 // Klavyeden elle çalma: parmak basılı kaldıkça sürer
-function notaCal(midi) {
+// MIDI şiddetinden (1-127) ses gücüne (0-1). Şiddet yoksa tam güç.
+function hizGuc(v) {
+  if (!(v > 0)) return 1;
+  return 0.2 + 0.8 * Math.pow(Math.min(v, 127) / 127, 1.2);
+}
+
+function notaCal(midi, hiz) {
   sesBaslat();
   if (pedalBekleyen.has(midi)) {   // pedalla tutulan nota yeniden basıldı: eskisini bırak
     pedalBekleyen.delete(midi);
@@ -58,7 +64,7 @@ function notaCal(midi) {
 
   // Gerçek piyano sesi hazırsa onu kullan
   if (PIYANO.hazir) {
-    const ses = piyanoSesBaslat(ctx, anaCikis, midi, t, null);
+    const ses = piyanoSesBaslat(ctx, anaCikis, midi, t, null, hizGuc(hiz));
     if (ses) {
       sesler[midi] = ses;
       ses.osc[0].onended = () => {
@@ -76,7 +82,7 @@ function notaCal(midi) {
 
   const cikis = ctx.createGain();
   cikis.gain.setValueAtTime(0.0001, t);
-  cikis.gain.linearRampToValueAtTime(0.25, t + 0.006);
+  cikis.gain.linearRampToValueAtTime(0.25 * hizGuc(hiz), t + 0.006);
   cikis.gain.exponentialRampToValueAtTime(0.0001, t + sure);
   cikis.connect(anaCikis);
 
@@ -166,13 +172,13 @@ function notaBirakGercek(midi) {
 // Otomatik çalma: belirli bir zamanda başlar, belirli sürede biter
 const programliSesler = new Set();
 
-function programliNotaCal(midi, t, sure) {
+function programliNotaCal(midi, t, sure, hiz) {
   sesBaslat();
   sure = Math.max(sure, 0.04);
 
   // Gerçek piyano sesi hazırsa onu kullan
   if (PIYANO.hazir) {
-    const ses = piyanoSesBaslat(ctx, anaCikis, midi, t, sure);
+    const ses = piyanoSesBaslat(ctx, anaCikis, midi, t, sure, hizGuc(hiz));
     if (ses) {
       programliSesler.add(ses);
       ses.osc[0].onended = () => {
@@ -186,7 +192,7 @@ function programliNotaCal(midi, t, sure) {
   // Sentez ses (yedek)
   const frekans = 440 * Math.pow(2, (midi - 69) / 12);
   const dogal = Math.min(Math.max(6 - (midi - 21) * 0.05, 1.2), 6);
-  const tepe = 0.25;
+  const tepe = 0.25 * hizGuc(hiz);
   const birakma = 0.18;
 
   const cikis = ctx.createGain();
@@ -273,6 +279,7 @@ function kisaAd(midi) {
 // Her parmak (pointerId) şu an hangi tuşun üzerinde olduğunu hatırlar.
 // Aynı tuşa birden fazla parmak basarsa, son parmak kalkana kadar nota sürer.
 
+const hariciHiz = {};              // MIDI'den gelen basış şiddetleri
 const hariciBasili = new Set();   // MIDI klavye ve mikrofondan gelen basılı notalar
 const parmaklar = new Map();   // pointerId -> midi (veya null)
 const tusSahipleri = {};       // midi -> Set(pointerId)
@@ -309,10 +316,16 @@ function basiliEl(midi) {
   return midi >= 60 ? 'sag' : 'sol';
 }
 
-function basiliIsaretle(midi, acik) {
-  const c = tuslar[midi].el.classList;
+function basiliIsaretle(midi, acik, hiz) {
+  const el = tuslar[midi].el;
+  const c = el.classList;
   c.remove('basili', 'basili-sag', 'basili-sol');
-  if (acik) c.add('basili', 'basili-' + basiliEl(midi));
+  if (acik) {
+    c.add('basili', 'basili-' + basiliEl(midi));
+    el.style.setProperty('--hiz', String(hiz > 0 ? Math.min(hiz, 127) / 127 : 0.7));
+  } else {
+    el.style.removeProperty('--hiz');
+  }
 }
 
 function tusBas(midi, id) {
@@ -337,7 +350,7 @@ function basiliNotalariYaz() {
   });
   const liste = Array.from(kume).sort((x, y) => x - y);
   if (!liste.length) return;
-  bilgiRenkli('', liste.slice(0, 6).map((m) => ({ yazi: notaAdi(m), el: basiliEl(m) })),
+  bilgiRenkli('', liste.slice(0, 6).map((m) => ({ yazi: notaAdi(m) + (hariciBasili.has(m) && hariciHiz[m] ? ' ' + hariciHiz[m] : ''), el: basiliEl(m) })),
     liste.length > 6 ? ' …' : '');
 }
 
@@ -634,7 +647,10 @@ function porteOlcekle() {
 function porteYenile() {
   oncekiCalanAnahtar = '';
   const kutu0 = document.getElementById('porte-kutu');
-  const eskiSol = kutu0.scrollLeft;
+  // Otuzikilik / üçleme gibi ince değerler varsa vuruş genişliğini artır
+  const eskiVurus = PORTE_AYAR.vurus;
+  PORTE_AYAR.vurus = aktifEser.notalar.some((n) => Math.abs(n.baslangic * 4 - Math.round(n.baslangic * 4)) > 0.02 || n.sure < 0.2) ? 96 : 60;
+  const eskiSol = kutu0.scrollLeft * (PORTE_AYAR.vurus / eskiVurus);
   const eskiUst = kutu0.scrollTop;
   porteCiz(document.getElementById('porte-kutu'), aktifEser, {
     sag: elGorunum.sag,
@@ -793,7 +809,7 @@ function olaylariHazirla() {
         const pb = pedalBitisi(n.baslangic + n.sure);
         if (pb !== null) sure = Math.min(pb - n.baslangic, n.sure + 16);
       }
-      return { id: n.id, el: n.el, midi: n.midi, b: n.baslangic - bas, sure: sure, gorunenSure: Math.min(n.sure, son - n.baslangic) };
+      return { id: n.id, el: n.el, midi: n.midi, v: n.v, b: n.baslangic - bas, sure: sure, gorunenSure: Math.min(n.sure, son - n.baslangic) };
     })
     .sort((a, b) => a.b - b.b);
 }
@@ -830,7 +846,7 @@ function zamanla() {
     const vb = o.b + cal.sayac * len;
     const t = cal.refZaman + (vb - cal.refVB) * sn;
     if (t > ufuk) break;
-    programliNotaCal(o.midi, Math.max(t, simdi + 0.005), o.sure * sn);
+    programliNotaCal(o.midi, Math.max(t, simdi + 0.005), o.sure * sn, o.v);
     cal.idx++;
   }
 
@@ -870,7 +886,10 @@ function calmaDuraklat() {
   clearInterval(cal.zamanlayici);
   cal.zamanlayici = null;
   programliSesleriKes();
-  vurguUygula([]);
+  // Duraklatma anında çalan notalar klavyede ve portede görünür kalır
+  const pos = cal.duraklatVB;
+  oncekiCalanAnahtar = '';
+  vurguUygula(cal.olaylar.filter((o) => o.b <= pos + 1e-6 && pos < o.b + o.gorunenSure - 1e-6));
   porteCizgisiniKoy(cal.baslangic + cal.duraklatVB);
   dugmeleriGuncelle();
   kayanYenile();
@@ -907,13 +926,17 @@ function vurguUygula(calan) {
   document.querySelectorAll('.cal-sag, .cal-sol').forEach((el) => {
     el.classList.remove('cal-sag');
     el.classList.remove('cal-sol');
+    if (!el.classList.contains('basili')) el.style.removeProperty('--hiz');
   });
   document.querySelectorAll('#porte-kutu .nota.calan').forEach((el) => {
     el.classList.remove('calan');
   });
 
   calan.forEach((o) => {
-    if (tuslar[o.midi]) tuslar[o.midi].el.classList.add('cal-' + o.el);
+    if (tuslar[o.midi]) {
+      tuslar[o.midi].el.classList.add('cal-' + o.el);
+      if (o.v > 0) tuslar[o.midi].el.style.setProperty('--hiz', String(o.v / 127));
+    }
     const g = document.querySelector('#porte-kutu .nota[data-id="' + o.id + '"]');
     if (g) g.classList.add('calan');
   });
@@ -1820,17 +1843,18 @@ function servisCalisaniKaydet() {
 
 const hariciSesli = new Set();   // uygulamanın sesiyle çalınan harici notalar
 
-function girisBas(midi, an, kaynak) {
+function girisBas(midi, an, kaynak, hiz) {
   if (!tuslar[midi]) return;
   hariciBasili.add(midi);
-  basiliIsaretle(midi, true);
+  hariciHiz[midi] = hiz > 0 ? hiz : 0;
+  basiliIsaretle(midi, true, hiz);
   // MIDI'de piyanonun kendi sesi varsa uygulama susar; mikrofonda hiç çalmaz (yankı olmasın)
   if (kaynak === 'midi' && window.GIRIS && GIRIS.midiSesi()) {
-    notaCal(midi);
+    notaCal(midi, hiz);
     hariciSesli.add(midi);
   }
   if (window.PERF) PERF.tusBasildi(midi, an);
-  if (window.KAYIT) KAYIT.nota(midi, an, true);
+  if (window.KAYIT) KAYIT.nota(midi, an, true, hiz);
   basiliNotalariYaz();
 }
 

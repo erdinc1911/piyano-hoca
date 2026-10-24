@@ -61,7 +61,9 @@
       const bas = yuvarla(n.baslangic);
       const sure = Math.max(yuvarla(n.sure), 0.0625);
       if (bas + sure > son) son = bas + sure;
-      return { id: n.el + '-' + sayac[n.el]++, el: n.el, midi: n.midi, baslangic: bas, sure: sure };
+      const nesne = { id: n.el + '-' + sayac[n.el]++, el: n.el, midi: n.midi, baslangic: bas, sure: sure };
+      if (n.v >= 1 && n.v <= 127) nesne.v = Math.round(n.v);
+      return nesne;
     });
     const olcuSayisi = Math.max(Math.ceil(son / ov - 1e-6), enAzOlcu || 1, 1);
     const eser = {
@@ -103,6 +105,7 @@
         Number.isInteger(n.midi) && n.midi >= ILK_MIDI && n.midi <= SON_MIDI &&
         gecerliSayi(n.baslangic, 0, 100000) && gecerliSayi(n.sure, 0.01, 1000) && !idler.has(n.id);
       if (!iyi) throw new Error('Notalardan biri geçersiz');
+      if (n.v !== undefined && !(Number.isInteger(n.v) && n.v >= 1 && n.v <= 127)) delete n.v;
       idler.add(n.id);
     });
     if (e.pedal !== undefined) {
@@ -507,11 +510,11 @@
         }
         return v;
       };
-      const ekle = (kanal, nota, bas, son) => {
+      const ekle = (kanal, nota, bas, son, hiz) => {
         if (kanal === 9) return; // vurmalı kanal
         const anahtar = iz + '|' + kanal;
         if (!akislar[anahtar]) akislar[anahtar] = [];
-        akislar[anahtar].push({ midi: nota, bas: bas / bolme, son: Math.max(son, bas + 1) / bolme });
+        akislar[anahtar].push({ midi: nota, bas: bas / bolme, son: Math.max(son, bas + 1) / bolme, v: hiz });
       };
 
       while (q < bitis) {
@@ -554,9 +557,10 @@
             const k = kanal + '|' + nota;
             if (komut === 0x90 && hiz > 0) {
               if (!acik[k]) acik[k] = [];
-              acik[k].push(tik);
+              acik[k].push({ t: tik, v: hiz });
             } else if (acik[k] && acik[k].length) {
-              ekle(kanal, nota, acik[k].shift(), tik);
+              const o = acik[k].shift();
+              ekle(kanal, nota, o.t, tik, o.v);
             }
           } else if (komut === 0xc0 || komut === 0xd0) {
             q += 1;
@@ -573,7 +577,7 @@
       // Kapanmamış notaları iz sonunda bitir
       Object.keys(acik).forEach((k) => {
         const ayr = k.split('|');
-        acik[k].forEach((bas) => ekle(Number(ayr[0]), Number(ayr[1]), bas, Math.max(tik, bas + bolme)));
+        acik[k].forEach((o) => ekle(Number(ayr[0]), Number(ayr[1]), o.t, Math.max(tik, o.t + bolme), o.v));
       });
     }
 
@@ -581,7 +585,7 @@
     if (anahtarlar.length === 0) throw new Error('MIDI dosyasında çalınabilir nota bulunamadı');
 
     const tumu = [];
-    anahtarlar.forEach((k) => akislar[k].forEach((n) => tumu.push({ midi: n.midi, bas: n.bas, son: n.son, k: k })));
+    anahtarlar.forEach((k) => akislar[k].forEach((n) => tumu.push({ midi: n.midi, bas: n.bas, son: n.son, k: k, v: n.v })));
     if (tumu.length > MAKS_NOTA) {
       throw new Error('Eser çok büyük (' + tumu.length + ' nota). En fazla ' + MAKS_NOTA + ' nota desteklenir');
     }
@@ -616,8 +620,12 @@
         bas = Math.round(bas * 4) / 4;
         sure = Math.max(Math.round(sure * 4) / 4, 0.25);
       }
-      return { el: elOf(n), midi: n.midi, baslangic: bas, sure: sure };
+      return { el: elOf(n), midi: n.midi, baslangic: bas, sure: sure, v: n.v };
     });
+    // Bütün notalar aynı şiddetteyse (bilgisayarda yazılmış dosya) şiddet saklanmaz
+    const farkliHiz = new Set(ham.map((n) => n.v));
+    if (farkliHiz.size <= 1) ham.forEach((n) => { delete n.v; });
+    else uyari.push('Notaların basış şiddeti (velocity) alındı.');
 
     let payG = pay || 4;
     let paydaG = payda || 4;

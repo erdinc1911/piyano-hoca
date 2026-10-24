@@ -177,7 +177,7 @@ async function piyanoSil() {
   sure = sayı: o kadar saniye sonra kendiliğinden sönmeye başlar (otomatik çalma).
   Dönen nesne sentez sesle aynı biçimdedir: { osc: [...], cikis: GainNode, baslangic }
 */
-function piyanoSesBaslat(ctx, cikis, midi, t, sure) {
+function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
   if (!PIYANO.hazir) return null;
   let kayit = PIYANO_ILK + PIYANO_ARALIK * Math.round((midi - PIYANO_ILK) / PIYANO_ARALIK);
   kayit = Math.min(Math.max(kayit, PIYANO_ILK), PIYANO_SON);
@@ -185,13 +185,14 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure) {
   if (!tampon) return null;
 
   const hiz = Math.pow(2, (midi - kayit) / 12);
+  const tepe = PIYANO_TEPE * (guc > 0 ? Math.min(guc, 1) : 1);
   const kaynak = ctx.createBufferSource();
   kaynak.buffer = tampon;
   kaynak.playbackRate.value = hiz;
 
   const kazanc = ctx.createGain();
   kazanc.gain.setValueAtTime(0.0001, t);
-  kazanc.gain.linearRampToValueAtTime(PIYANO_TEPE, t + 0.004);
+  kazanc.gain.linearRampToValueAtTime(tepe, t + 0.004);
 
   kaynak.connect(kazanc);
   kazanc.connect(cikis);
@@ -200,7 +201,7 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure) {
   let bitis = t + dogalSure + 0.1;
   if (sure !== null && sure !== undefined) {
     const birak = t + Math.max(sure, 0.04);
-    kazanc.gain.setValueAtTime(PIYANO_TEPE, birak);
+    kazanc.gain.setValueAtTime(tepe, birak);
     kazanc.gain.setTargetAtTime(0.0001, birak, PIYANO_BIRAKMA);
     bitis = Math.min(bitis, birak + 1.6);
   }

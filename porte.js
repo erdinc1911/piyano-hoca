@@ -57,7 +57,9 @@ function figur(sure) {
     [1,    { bos: false, sap: true,  bayrak: 0, nokta: false }],
     [0.75, { bos: false, sap: true,  bayrak: 1, nokta: true }],
     [0.5,  { bos: false, sap: true,  bayrak: 1, nokta: false }],
-    [0.25, { bos: false, sap: true,  bayrak: 2, nokta: false }]
+    [0.375, { bos: false, sap: true, bayrak: 2, nokta: true }],
+    [0.25, { bos: false, sap: true,  bayrak: 2, nokta: false }],
+    [0.125, { bos: false, sap: true, bayrak: 3, nokta: false }]
   ];
   let en = tablo[0];
   tablo.forEach((t) => {
@@ -85,7 +87,7 @@ function porteCizgisiniKoy(vurus) {
 }
 
 const EL_RENK = { sag: '#1d5fbf', sol: '#c2620a' };
-const PARCA_DEGERLERI = [4, 3, 2, 1.5, 1, 0.75, 0.5, 0.25];
+const PARCA_DEGERLERI = [4, 3, 2, 1.5, 1, 0.75, 0.5, 0.375, 0.25, 0.125];
 
 // Bir notayı gösterim parçalarına böler: ölçü çizgisini aşan ya da standart olmayan süreler
 // birbirine bağlı (ligatür) birkaç nota olarak görünür. Çalma verisi değişmez.
@@ -94,13 +96,13 @@ function notaParcala(n, olcuVurus) {
   let bas = n.baslangic;
   let kalan = n.sure;
   let ilk = true;
-  while (kalan >= 0.2) {
-    if (!ilk && kalan < 0.34) break;
+  while (kalan >= 0.1) {
+    if (!ilk && kalan < 0.2) break;
     const olcuSonu = (Math.floor(bas / olcuVurus + 1e-6) + 1) * olcuVurus;
     let tavan = Math.min(kalan, olcuSonu - bas);
-    if (tavan < 0.2) {
+    if (tavan < 0.1) {
       if (!ilk) break;
-      tavan = 0.25;
+      tavan = 0.125;
     }
     let v = 0;
     for (let i = 0; i < PARCA_DEGERLERI.length; i++) {
@@ -112,7 +114,7 @@ function notaParcala(n, olcuVurus) {
     kalan -= v;
     ilk = false;
   }
-  if (!parcalar.length) parcalar.push({ n: n, baslangic: n.baslangic, sure: 0.25, ilk: true });
+  if (!parcalar.length) parcalar.push({ n: n, baslangic: n.baslangic, sure: 0.125, ilk: true });
   return parcalar;
 }
 
@@ -257,6 +259,24 @@ function sapKirisCiz(svg, parcalar, olcu) {
       const renk = EL_RENK[el];
       const ic = asagi ? -2.5 : 2.5;     // kiriş kalınlığı notaya doğru
       svgCizgi(kat, ilk.sx - 0.9, yAt(ilk.sx - 0.9) + ic, son.sx + 0.9, yAt(son.sx + 0.9) + ic, renk, 5);
+      // üçüncü kiriş (otuzikilikler)
+      {
+        const kayma3 = asagi ? -15 : 15;
+        let i3 = 0;
+        while (i3 < z.length) {
+          if (z[i3].bayrak < 3) { i3++; continue; }
+          let j3 = i3;
+          while (j3 + 1 < z.length && z[j3 + 1].bayrak >= 3) j3++;
+          if (j3 > i3) {
+            svgCizgi(kat, z[i3].sx, yAt(z[i3].sx) + kayma3, z[j3].sx, yAt(z[j3].sx) + kayma3, renk, 4);
+          } else {
+            const yon3 = i3 > 0 ? -1 : 1;
+            const x3 = z[i3].sx + yon3 * 10;
+            svgCizgi(kat, z[i3].sx, yAt(z[i3].sx) + kayma3, x3, yAt(x3) + kayma3, renk, 4);
+          }
+          i3 = j3 + 1;
+        }
+      }
       // ikinci kiriş (onaltılıklar)
       const kayma = asagi ? -9.5 : 9.5;
       let i = 0;

@@ -1441,3 +1441,8 @@ header h1 {
 .yardim summary::before { content: '▸'; display: inline-block; width: 1.2em; color: #c9a45c; }
 .yardim details[open] > summary::before { content: '▾'; }
 .yardim a { color: #c9a45c; }
+
+/* Tuş basıncı: sert basış daha koyu ve doygun görünür */
+.beyaz.basili, .siyah.basili, .beyaz.cal-sag, .beyaz.cal-sol, .siyah.cal-sag, .siyah.cal-sol {
+  filter: brightness(calc(1.22 - var(--hiz, 0.7) * 0.42)) saturate(calc(0.8 + var(--hiz, 0.7) * 0.5));
+}

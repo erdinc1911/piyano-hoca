@@ -61,7 +61,7 @@
       return;
     }
     if (komut === 0x90 && hiz > 0) {
-      api.bas(nota, an, 'midi');
+      api.bas(nota, an, 'midi', hiz);
       M.son = notaAdi(nota) + ' (hız ' + hiz + ')';
       arayuzYaz();
     } else if (komut === 0x80 || (komut === 0x90 && hiz === 0)) {

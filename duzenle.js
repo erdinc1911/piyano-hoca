@@ -12,7 +12,7 @@
   const $ = (id) => document.getElementById(id);
   const SURELER = [4, 2, 1, 0.5, 0.25];            // Bütün, yarım, dörtlük, sekizlik, onaltılık
   const SURE_ADLARI = ['Bütün', 'Yarım', 'Dörtlük', 'Sekizlik', 'Onaltılık'];
-  const SURE_LISTESI = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];  // Kısalt / Uzat sırası
+  const SURE_LISTESI = [0.125, 0.25, 0.375, 0.5, 0.75, 1, 1.5, 2, 3, 4];  // Kısalt / Uzat sırası
   const DOGAL = [0, 2, 4, 5, 7, 9, 11];
   const ILK_MIDI = 21;
   const SON_MIDI = 108;
