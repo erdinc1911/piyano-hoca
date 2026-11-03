@@ -1861,7 +1861,8 @@ header h1 {
               <li><b>Ses yapay geliyor:</b> Ayarlar'dan gerçek piyano seslerini indir (yaklaşık 5,4 MB, bir kez).</li>
               <li><b>Mikrofon çalışmıyor:</b> Tarayıcıdan mikrofon iznini ver. Sayfa her açıldığında izin yeniden istenebilir.</li>
               <li><b>MIDI cihazı görünmüyor:</b> Kabloyu çıkarıp tak, piyanonun açık olduğunu kontrol et. Tarayıcı olarak Chrome ya da Brave kullan.</li>
-              <li><b>Hazır eserler yüklenmiyor:</b> İlk açılışta internet gerekir. Sonra internetsiz de açılır.</li>
+              <li><b>Hazır eserler yüklenmiyor:</b> Hazır eserler uygulamanın içindedir, internet gerekmez. Liste boşsa sayfayı iki kez yenile.</li>
+              <li><b>İnternetsiz açılmıyor:</b> Uygulama tek bir sayfadır. İnternetsiz açılış tarayıcının önbelleğine bağlıdır ve garanti değildir. Piyano sesleri ve PDF desteği bir kez indirildikten sonra internetsiz çalışır.</li>
               <li><b>Yeni sürüm gelmedi:</b> Sayfayı iki kez yenile.</li>
             </ul>
           </details>
@@ -1908,7 +1909,7 @@ header h1 {
         <div class="kart">
           <div class="satir"><span>Sürüm</span><b id="ay-surum"></b></div>
           <div class="satir"><span>Bağlantı</span><b id="ay-baglanti"></b></div>
-          <div class="satir"><span>Çevrimdışı kullanıma hazır</span><b id="ay-cevrimdisi"></b></div>
+          <div class="satir"><span>Çevrimdışı kullanım</span><b id="ay-cevrimdisi"></b></div>
           <div class="satir"><span>Kalıcı depolama</span><b id="ay-depolama"></b></div>
           <div class="satir"><span>Kullanılan alan</span><b id="ay-alan"></b></div>
           <div class="satir"><span>Adres</span><b id="ay-adres"></b></div>
@@ -7121,7 +7122,7 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
       $('hz-sayi').textContent = liste.filter(gorunenMu).length + ' eser · ' + liste.filter((k) => gorunenMu(k) && k.pd).length + ' pedallı';
       ciz();
     } catch (e) {
-      $('hz-liste').textContent = 'Hazır eserler yüklenemedi (internet gerekebilir).';
+      $('hz-liste').textContent = 'Hazır eserler yüklenemedi. Sayfayı iki kez yenile.';
     }
   }
 
@@ -8900,12 +8901,7 @@ async function ayarlarYenile() {
   if (window.pdfKartiYenile) window.pdfKartiYenile();
 
   const cevrimdisi = document.getElementById('ay-cevrimdisi');
-  if (!('serviceWorker' in navigator)) {
-    cevrimdisi.textContent = 'Hayır (tarayıcı desteklemiyor)';
-  } else {
-    const hazir = await onbellekHazirMi();
-    cevrimdisi.textContent = hazir ? 'Evet' : 'Henüz değil (sayfayı bir kez yenile)';
-  }
+  cevrimdisi.textContent = 'Tarayıcı önbelleğine bağlı (garanti değil)';
 
   const depolama = document.getElementById('ay-depolama');
   const alan = document.getElementById('ay-alan');
