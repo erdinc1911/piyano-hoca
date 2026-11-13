@@ -1496,6 +1496,34 @@ header h1 {
 .bolum-tumu { background: var(--yuzey-2); color: var(--yazi); border: 1px solid var(--cizgi); border-radius: 10px; padding: 10px 14px; font-size: 0.95rem; touch-action: manipulation; }
 .bolum-tumu:active { background: var(--cizgi); }
 
+/* Menü bölümleri: kutu, belirgin başlık ve kısa açıklama */
+.cek-bolum {
+  background: var(--yuzey);
+  border: 1px solid var(--cizgi);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 0 0 12px;
+}
+.cek-bolum h3 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--yazi);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cek-ikon { font-size: 1.1rem; }
+.cek-ack {
+  color: #aab0cc;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+.cek-not { color: #aab0cc; }
+
 </style>
 </head>
 <body>
@@ -1608,7 +1636,8 @@ header h1 {
           <button id="cekmece-kapat" type="button" class="menu-dugme" aria-label="Kapat">✕</button>
         </div>
         <section class="cek-bolum">
-          <h3>Görünüm</h3>
+          <h3><span class="cek-ikon">👁</span> Görünüm</h3>
+          <p class="cek-ack">Ekranda hangi bölümlerin görüneceğini seç: porte (nota), kayan nota ve klavye.</p>
           <div id="panel-dugmeleri">
             <button id="pn-porte" type="button" class="pn-dugme aktif">Porte</button>
             <button id="pn-kayan" type="button" class="pn-dugme aktif">Kayan nota</button>
@@ -1618,7 +1647,8 @@ header h1 {
           <button id="kl-sigdir" type="button" class="cal-dugme">↔ Klavyeyi eserin aralığına sığdır</button>
         </section>
         <section class="cek-bolum">
-          <h3>Çalınacak bölüm</h3>
+          <h3><span class="cek-ikon">📏</span> Çalınacak bölüm</h3>
+          <p class="cek-ack">Eserin hangi ölçülerinin çalınacağını seç. Çal ve Dene yalnızca bu aralığı kullanır. Döngü açıksa aralık tekrar tekrar çalar.</p>
           <div class="bolum-sec">
             <div class="bolum-kol">
               <span class="etiket">Başlangıç ölçüsü</span>
@@ -1641,7 +1671,8 @@ header h1 {
           <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
         </section>
         <section class="cek-bolum">
-          <h3>Giriş</h3>
+          <h3><span class="cek-ikon">🎹</span> Giriş</h3>
+          <p class="cek-ack">Kendi çalışını nereden alsın: ekran klavyesi, bağlı MIDI piyano ya da mikrofon.</p>
           <div class="gi-sec">
             <button type="button" class="pn-dugme aktif" data-giris="ekran">Ekran</button>
             <button type="button" class="pn-dugme" data-giris="midi">MIDI klavye</button>
@@ -1659,7 +1690,8 @@ header h1 {
           </div>
         </section>
         <section class="cek-bolum">
-          <h3>Çaldığını notaya yaz</h3>
+          <h3><span class="cek-ikon">⏺</span> Çaldığını notaya yaz</h3>
+          <p class="cek-ack">Çaldığın notalar portede canlı yazılır, bitirince kütüphaneye yeni eser olarak eklenir.</p>
           <div class="grup">
             <span class="etiket">Tempo</span>
             <button id="ky-tempo-azalt" type="button" class="kucuk" aria-label="Yavaşlat">−</button>
@@ -1674,10 +1706,11 @@ header h1 {
           </div>
           <button id="ky-metro" type="button" class="cal-dugme"></button>
           <button id="ky-baslat" type="button" class="cal-dugme kayit-baslat">⏺ Kaydı başlat</button>
-          <p class="cek-not">Bir ölçü sayım yapılır, sonra çaldığın notalar kaydedilir. Bitirince kütüphaneye yeni eser olarak eklenir.</p>
+          <p class="cek-not">Başlatınca bir ölçü sayım yapılır, sonra çalmaya başla. Bitir'e basınca kayıt kaydedilir.</p>
         </section>
         <section class="cek-bolum">
-          <h3>Çalışma</h3>
+          <h3><span class="cek-ikon">🎯</span> Çalışma</h3>
+          <p class="cek-ack">Dene, çaldığını denetler ve puan verir. Düzenle, eserin notalarını değiştirmeni sağlar.</p>
           <button id="pedal-ses" type="button" class="cal-dugme aktif-ayar">Pedal sesi: açık</button>
           <button id="btn-dene" type="button" class="cal-dugme">🎯 Dene</button>
           <button id="btn-duzenle" type="button" class="cal-dugme">✏ Düzenle</button>
