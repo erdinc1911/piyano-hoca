@@ -1524,6 +1524,38 @@ header h1 {
 }
 .cek-not { color: #aab0cc; }
 
+/* Menü (son düzen): ince sarı çerçeve, başlık şeridi, sönük düğmeler */
+.cek-bolum {
+  padding: 0 14px 14px;
+  border: 1px solid var(--altin);
+  overflow: hidden;
+}
+.cek-bolum h3 {
+  margin: 0 -14px 10px;
+  padding: 11px 14px 9px;
+  background: rgba(201, 164, 92, 0.16);
+  border-bottom: 1px solid var(--altin-koyu);
+  color: #f3e3b8;
+  font-size: 1.05rem;
+}
+.cek-bolum .cal-dugme {
+  background: var(--yuzey-2);
+  color: var(--yazi);
+  border: 1px solid var(--cizgi);
+  font-weight: 500;
+}
+.cek-bolum .cal-dugme:active { background: var(--cizgi); }
+.cek-bolum .cal-dugme.aktif,
+.cek-bolum .cal-dugme.aktif-ayar,
+#ky-metro.aktif {
+  background: #3a2f16;
+  border-color: var(--altin);
+  color: var(--altin);
+}
+#kl-sigdir { margin-top: 10px; }
+.bolum-sec .cal-dugme { margin: 0; padding: 10px 8px; width: 100%; }
+.bolum-sec .bolum-tumu { grid-column: auto; }
+
 </style>
 </head>
 <body>
@@ -1667,8 +1699,8 @@ header h1 {
               </div>
             </div>
             <button id="bolum-tumu" type="button" class="kucuk genis bolum-tumu">Tüm eser</button>
+            <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
           </div>
-          <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
         </section>
         <section class="cek-bolum">
           <h3><span class="cek-ikon">🎹</span> Giriş</h3>
