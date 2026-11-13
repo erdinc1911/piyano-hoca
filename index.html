@@ -1556,6 +1556,29 @@ header h1 {
 .bolum-sec .cal-dugme { margin: 0; padding: 10px 8px; width: 100%; }
 .bolum-sec .bolum-tumu { grid-column: auto; }
 
+/* Menü bölümleri açılıp kapanır (details/summary) */
+details.cek-bolum { padding: 0 14px; }
+details.cek-bolum[open] { padding-bottom: 14px; }
+details.cek-bolum > summary {
+  list-style: none;
+  cursor: pointer;
+  margin: 0 -14px;
+  padding: 12px 14px;
+  background: rgba(201, 164, 92, 0.16);
+  color: #f3e3b8;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+details.cek-bolum > summary::-webkit-details-marker { display: none; }
+details.cek-bolum > summary::after { content: '▸'; margin-left: auto; color: var(--altin); }
+details.cek-bolum[open] > summary { margin-bottom: 10px; border-bottom: 1px solid var(--altin-koyu); }
+details.cek-bolum[open] > summary::after { content: '▾'; }
+
 </style>
 </head>
 <body>
@@ -1667,19 +1690,15 @@ header h1 {
           <b>Menü</b>
           <button id="cekmece-kapat" type="button" class="menu-dugme" aria-label="Kapat">✕</button>
         </div>
-        <section class="cek-bolum">
-          <h3><span class="cek-ikon">👁</span> Görünüm</h3>
-          <p class="cek-ack">Ekranda hangi bölümlerin görüneceğini seç: porte (nota), kayan nota ve klavye.</p>
-          <div id="panel-dugmeleri">
-            <button id="pn-porte" type="button" class="pn-dugme aktif">Porte</button>
-            <button id="pn-kayan" type="button" class="pn-dugme aktif">Kayan nota</button>
-            <button id="pn-klavye" type="button" class="pn-dugme aktif">Klavye</button>
-            <button id="pn-sifirla" type="button" class="pn-dugme" aria-label="Düzeni sıfırla">↺</button>
-          </div>
-          <button id="kl-sigdir" type="button" class="cal-dugme">↔ Klavyeyi eserin aralığına sığdır</button>
-        </section>
-        <section class="cek-bolum">
-          <h3><span class="cek-ikon">📏</span> Çalınacak bölüm</h3>
+        <details class="cek-bolum" data-menu="calisma" open>
+          <summary><span class="cek-ikon">🎯</span> Çalışma</summary>
+          <p class="cek-ack">Dene, çaldığını denetler ve puan verir. Düzenle, eserin notalarını değiştirmeni sağlar.</p>
+          <button id="pedal-ses" type="button" class="cal-dugme aktif-ayar">Pedal sesi: açık</button>
+          <button id="btn-dene" type="button" class="cal-dugme">🎯 Dene</button>
+          <button id="btn-duzenle" type="button" class="cal-dugme">✏ Düzenle</button>
+        </details>
+        <details class="cek-bolum" data-menu="bolum" open>
+          <summary><span class="cek-ikon">📏</span> Çalınacak bölüm</summary>
           <p class="cek-ack">Eserin hangi ölçülerinin çalınacağını seç. Çal ve Dene yalnızca bu aralığı kullanır. Döngü açıksa aralık tekrar tekrar çalar.</p>
           <div class="bolum-sec">
             <div class="bolum-kol">
@@ -1701,9 +1720,9 @@ header h1 {
             <button id="bolum-tumu" type="button" class="kucuk genis bolum-tumu">Tüm eser</button>
             <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
           </div>
-        </section>
-        <section class="cek-bolum">
-          <h3><span class="cek-ikon">🎹</span> Giriş</h3>
+        </details>
+        <details class="cek-bolum" data-menu="giris">
+          <summary><span class="cek-ikon">🎹</span> Giriş</summary>
           <p class="cek-ack">Kendi çalışını nereden alsın: ekran klavyesi, bağlı MIDI piyano ya da mikrofon.</p>
           <div class="gi-sec">
             <button type="button" class="pn-dugme aktif" data-giris="ekran">Ekran</button>
@@ -1720,9 +1739,9 @@ header h1 {
             <p id="gi-mik-son" class="cek-not"></p>
             <p class="cek-not">Mikrofon tek tek notaları algılar. Akor (birkaç nota birden) için MIDI klavye kullan. Sessiz bir ortamda, mikrofonu piyanoya yaklaştır.</p>
           </div>
-        </section>
-        <section class="cek-bolum">
-          <h3><span class="cek-ikon">⏺</span> Çaldığını notaya yaz</h3>
+        </details>
+        <details class="cek-bolum" data-menu="kayit">
+          <summary><span class="cek-ikon">🔴</span> Çaldığını notaya yaz</summary>
           <p class="cek-ack">Çaldığın notalar portede canlı yazılır, bitirince kütüphaneye yeni eser olarak eklenir.</p>
           <div class="grup">
             <span class="etiket">Tempo</span>
@@ -1739,15 +1758,19 @@ header h1 {
           <button id="ky-metro" type="button" class="cal-dugme"></button>
           <button id="ky-baslat" type="button" class="cal-dugme kayit-baslat">⏺ Kaydı başlat</button>
           <p class="cek-not">Başlatınca bir ölçü sayım yapılır, sonra çalmaya başla. Bitir'e basınca kayıt kaydedilir.</p>
-        </section>
-        <section class="cek-bolum">
-          <h3><span class="cek-ikon">🎯</span> Çalışma</h3>
-          <p class="cek-ack">Dene, çaldığını denetler ve puan verir. Düzenle, eserin notalarını değiştirmeni sağlar.</p>
-          <button id="pedal-ses" type="button" class="cal-dugme aktif-ayar">Pedal sesi: açık</button>
-          <button id="btn-dene" type="button" class="cal-dugme">🎯 Dene</button>
-          <button id="btn-duzenle" type="button" class="cal-dugme">✏ Düzenle</button>
-        </section>
-      </aside>
+        </details>
+        <details class="cek-bolum" data-menu="gorunum">
+          <summary><span class="cek-ikon">👁</span> Görünüm</summary>
+          <p class="cek-ack">Ekranda hangi bölümlerin görüneceğini seç: porte (nota), kayan nota ve klavye.</p>
+          <div id="panel-dugmeleri">
+            <button id="pn-porte" type="button" class="pn-dugme aktif">Porte</button>
+            <button id="pn-kayan" type="button" class="pn-dugme aktif">Kayan nota</button>
+            <button id="pn-klavye" type="button" class="pn-dugme aktif">Klavye</button>
+            <button id="pn-sifirla" type="button" class="pn-dugme" aria-label="Düzeni sıfırla">↺</button>
+          </div>
+          <button id="kl-sigdir" type="button" class="cal-dugme">↔ Klavyeyi eserin aralığına sığdır</button>
+        </details>
+</aside>
 
       <div id="dene-cubugu" hidden>
         <div class="grup">
@@ -9368,6 +9391,21 @@ function kayitKur() {
 /* ---------- MENÜ ÇEKMECESİ VE GEÇİCİ BİLGİ YAZISI ---------- */
 
 function cekmeceKur() {
+  // Menü bölümlerinin açık/kapalı durumu hatırlanır
+  try {
+    const kayit = JSON.parse(localStorage.getItem('piyano-hoca-menu') || '{}');
+    document.querySelectorAll('details.cek-bolum').forEach((d) => {
+      const k = d.dataset.menu;
+      if (k && typeof kayit[k] === 'boolean') d.open = kayit[k];
+      d.addEventListener('toggle', () => {
+        try {
+          const son = JSON.parse(localStorage.getItem('piyano-hoca-menu') || '{}');
+          son[k] = d.open;
+          localStorage.setItem('piyano-hoca-menu', JSON.stringify(son));
+        } catch (e) {}
+      });
+    });
+  } catch (e) {}
   const cek = document.getElementById('cekmece');
   const perde = document.getElementById('cekmece-perde');
   const ac = (acik) => {
