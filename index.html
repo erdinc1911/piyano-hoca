@@ -1858,7 +1858,7 @@ header h1 {
             <summary>Sık karşılaşılan sorunlar</summary>
             <ul>
               <li><b>Ses gelmiyor:</b> Cihazın sesini aç, sessiz modda olmadığından emin ol. Sayfada bir kez dokun (tarayıcılar sesi dokunuştan sonra açar).</li>
-              <li><b>Ses yapay geliyor:</b> Ayarlar'dan gerçek piyano seslerini indir (yaklaşık 5,4 MB, bir kez).</li>
+              <li><b>Ses yapay geliyor:</b> Ayarlar'dan gerçek piyano seslerini indir (yaklaşık 5,4 MB, bir kez). Hâlâ yapay geliyorsa aynı kartta "ek katmanları indir" düğmesine bas (yaklaşık 11 MB): yumuşak ve sert basışta farklı piyano kaydı çalar.</li>
               <li><b>Mikrofon çalışmıyor:</b> Tarayıcıdan mikrofon iznini ver. Sayfa her açıldığında izin yeniden istenebilir.</li>
               <li><b>MIDI cihazı görünmüyor:</b> Kabloyu çıkarıp tak, piyanonun açık olduğunu kontrol et. Tarayıcı olarak Chrome ya da Brave kullan.</li>
               <li><b>Hazır eserler yüklenmiyor:</b> Hazır eserler uygulamanın içindedir, internet gerekmez. Liste boşsa sayfayı iki kez yenile.</li>
@@ -1890,10 +1890,12 @@ header h1 {
           <p class="buyuk">Piyano sesi</p>
           <div class="satir"><span>Ses türü</span><b id="ay-ses"></b></div>
           <button id="btn-ses-indir" type="button">Piyano seslerini indir (≈5,4 MB)</button>
+          <div class="satir"><span>Ek katmanlar (yumuşak ve sert basış)</span><b id="ay-ses-ek"></b></div>
+          <button id="btn-ses-ek" type="button">Daha gerçekçi ses: ek katmanları indir (≈11 MB)</button>
           <div id="ses-ilerleme" class="ilerleme" hidden><div id="ses-ilerleme-dolgu"></div></div>
           <button id="btn-ses-sil" type="button" class="uyari">İndirilen sesleri sil</button>
           <p id="ses-mesaj" class="mesaj"></p>
-          <p class="ipucu">Piyano sesleri: Salamander Grand Piano V3, Alexander Holm, CC BY 3.0 (creativecommons.org/licenses/by/3.0). Bir kez internetle indirilir, sonra internetsiz çalışır. İndirilmediyse sentez ses kullanılır.</p>
+          <p class="ipucu">Piyano sesleri: Salamander Grand Piano V3, Alexander Holm, CC BY 3.0 (creativecommons.org/licenses/by/3.0). Bir kez internetle indirilir, sonra internetsiz çalışır. İndirilmediyse sentez ses kullanılır. Ek katmanlar, yumuşak ve sert basışta farklı piyano kaydı çalar. Önce ana sesleri indir.</p>
         </div>
 
         <div class="kart">
@@ -2541,8 +2543,37 @@ const PIYANO_ZAMAN_ASIMI = 30000; // milisaniye
 const PIYANO = {
   hazir: false,
   yukleniyor: false,
-  tamponlar: {} // kayıt midi numarası -> AudioBuffer
+  tamponlar: {}, // kayıt midi numarası -> AudioBuffer (orta şiddet, v10)
+  ekHazir: false, // yumuşak (v6) ve sert (v14) katmanlar indirildi ve belleğe alındı mı
+  ek: { 6: {}, 14: {} }
 };
+
+/*
+  EK KATMANLAR (isteğe bağlı): aynı Salamander setinin yumuşak (v6) ve sert (v14) basış kayıtları.
+  Çalma şiddetine göre katman seçilir: yumuşak < 0,45 <= orta <= 0,75 < sert.
+  Bellek için ek katmanlar tek kanala çevrilir ve ilk EK_SANIYE saniyeyle sınırlanır.
+*/
+const PIYANO_EK_ONBELLEK = 'piyano-sesler-ek-v1';
+const PIYANO_EK_KATMANLAR = [6, 14];
+const PIYANO_EK_SANIYE = 8;
+const PIYANO_ESIK_YUMUSAK = 0.45;
+const PIYANO_ESIK_SERT = 0.75;
+
+function piyanoEkOrnekler() {
+  const liste = [];
+  PIYANO_EK_KATMANLAR.forEach((v) => {
+    const adresler = [
+      'https://unpkg.com/@audio-samples/piano-mp3-velocity' + v + '/audio/',
+      'https://cdn.jsdelivr.net/npm/@audio-samples/piano-mp3-velocity' + v + '/audio/'
+    ];
+    for (let m = PIYANO_ILK; m <= PIYANO_SON; m += PIYANO_ARALIK) {
+      const ad = PIYANO_NOT_ADLARI[m % 12] + (Math.floor(m / 12) - 1);
+      const dosya = ad.replace('#', '%23') + 'v' + v + '.mp3';
+      liste.push({ midi: m, ad: ad + ' (v' + v + ')', katman: v, adres: adresler[0] + dosya, kaynaklar: adresler.map((a) => a + dosya) });
+    }
+  });
+  return liste;
+}
 
 function piyanoOrnekler() {
   const liste = [];
@@ -2683,10 +2714,90 @@ async function piyanoIndir(ctx, ilerleme) {
   if (!PIYANO.hazir) throw new Error('Sesler indirildi ama çözülemedi');
 }
 
+// Çözülmüş kaydı tek kanala çevirip kısaltır (bellek tasarrufu)
+function piyanoKisalt(ctx, tampon) {
+  const hz = tampon.sampleRate;
+  const n = Math.min(tampon.length, Math.floor(PIYANO_EK_SANIYE * hz));
+  const kisa = ctx.createBuffer(1, n, hz);
+  const hedef = kisa.getChannelData(0);
+  const kanal = tampon.numberOfChannels;
+  for (let c = 0; c < kanal; c++) {
+    const kaynak = tampon.getChannelData(c);
+    for (let i = 0; i < n; i++) hedef[i] += kaynak[i] / kanal;
+  }
+  const sonum = Math.min(n, Math.floor(0.5 * hz)); // kesilen uca yumuşak son
+  for (let i = 0; i < sonum; i++) hedef[n - 1 - i] *= i / sonum;
+  return kisa;
+}
+
+async function piyanoEkOnbellekSayisi() {
+  if (!('caches' in window)) return 0;
+  const onbellek = await caches.open(PIYANO_EK_ONBELLEK);
+  return (await onbellek.keys()).length;
+}
+
+async function piyanoEkYukle(ctx) {
+  try {
+    if (!('caches' in window)) return false;
+    const onbellek = await caches.open(PIYANO_EK_ONBELLEK);
+    const ek = { 6: {}, 14: {} };
+    let eksik = 0;
+    for (const o of piyanoEkOrnekler()) {
+      const yanit = await onbellek.match(o.adres);
+      if (!yanit) { eksik++; continue; }
+      try {
+        const veri = await yanit.arrayBuffer();
+        ek[o.katman][o.midi] = piyanoKisalt(ctx, await sesCoz(ctx, veri));
+      } catch (e) {
+        await onbellek.delete(o.adres);
+        eksik++;
+      }
+    }
+    PIYANO.ek = ek;
+    PIYANO.ekHazir = eksik === 0;
+    return PIYANO.ekHazir;
+  } catch (e) {
+    PIYANO.ekHazir = false;
+    return false;
+  }
+}
+
+async function piyanoEkIndir(ctx, ilerleme) {
+  if (!('caches' in window)) throw new Error('Tarayıcı önbelleği desteklemiyor');
+  if (!navigator.onLine) throw new Error('İnternet bağlantısı yok');
+  const onbellek = await caches.open(PIYANO_EK_ONBELLEK);
+  const liste = piyanoEkOrnekler();
+  const toplam = liste.length;
+  const sira = liste.slice();
+  const hatalar = [];
+  let bitti = 0;
+  async function isci() {
+    while (sira.length > 0) {
+      const o = sira.shift();
+      try {
+        await piyanoKayitIndir(o, onbellek);
+        bitti++;
+        if (ilerleme) ilerleme(bitti, toplam);
+      } catch (e) {
+        hatalar.push(e && e.message ? e.message : o.ad);
+      }
+    }
+  }
+  await Promise.all([isci(), isci()]);
+  if (hatalar.length > 0) throw new Error(hatalar.length + ' dosya indirilemedi, ilki: ' + hatalar[0]);
+  await piyanoEkYukle(ctx);
+  if (!PIYANO.ekHazir) throw new Error('Ek sesler indirildi ama çözülemedi');
+}
+
 async function piyanoSil() {
   PIYANO.hazir = false;
   PIYANO.tamponlar = {};
-  if ('caches' in window) await caches.delete(PIYANO_ONBELLEK);
+  PIYANO.ekHazir = false;
+  PIYANO.ek = { 6: {}, 14: {} };
+  if ('caches' in window) {
+    await caches.delete(PIYANO_ONBELLEK);
+    await caches.delete(PIYANO_EK_ONBELLEK);
+  }
 }
 
 /*
@@ -2699,11 +2810,18 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
   if (!PIYANO.hazir) return null;
   let kayit = PIYANO_ILK + PIYANO_ARALIK * Math.round((midi - PIYANO_ILK) / PIYANO_ARALIK);
   kayit = Math.min(Math.max(kayit, PIYANO_ILK), PIYANO_SON);
-  const tampon = PIYANO.tamponlar[kayit];
+  let tampon = PIYANO.tamponlar[kayit];
+  let katman = 10;
+  if (PIYANO.ekHazir && guc > 0) {
+    const v = guc < PIYANO_ESIK_YUMUSAK ? 6 : (guc > PIYANO_ESIK_SERT ? 14 : 10);
+    if (v !== 10 && PIYANO.ek[v] && PIYANO.ek[v][kayit]) { tampon = PIYANO.ek[v][kayit]; katman = v; }
+  }
   if (!tampon) return null;
 
   const hiz = Math.pow(2, (midi - kayit) / 12);
-  const tepe = PIYANO_TEPE * (guc > 0 ? Math.min(guc, 1) : 1);
+  const g = guc > 0 ? Math.min(guc, 1) : 1;
+  // Yumuşak/sert kayıtlar zaten o şiddette kaydedildiği için ses payını daha az düşürürüz
+  const tepe = PIYANO_TEPE * (katman === 10 ? g : (0.55 + 0.45 * g));
   const kaynak = ctx.createBufferSource();
   kaynak.buffer = tampon;
   kaynak.playbackRate.value = hiz;
@@ -8816,6 +8934,52 @@ async function sesKartiYenile() {
     indirBtn.disabled = sesIndiriliyor;
   }
   silBtn.disabled = sesIndiriliyor || sayi === 0;
+
+  const ekAy = document.getElementById('ay-ses-ek');
+  const ekBtn = document.getElementById('btn-ses-ek');
+  let ekSayi = 0;
+  try { ekSayi = await piyanoEkOnbellekSayisi(); } catch (e) {}
+  const ekToplam = piyanoEkOrnekler().length;
+  if (PIYANO.ekHazir) {
+    ekAy.textContent = 'Hazır';
+    ekBtn.textContent = 'Ek katmanlar indirildi';
+    ekBtn.disabled = true;
+  } else if (ekSayi > 0) {
+    ekAy.textContent = 'Eksik (' + ekSayi + '/' + ekToplam + ')';
+    ekBtn.textContent = 'Ek katmanları tamamla';
+    ekBtn.disabled = sesIndiriliyor || !PIYANO.hazir;
+  } else {
+    ekAy.textContent = 'İndirilmedi';
+    ekBtn.textContent = 'Daha gerçekçi ses: ek katmanları indir (≈11 MB)';
+    ekBtn.disabled = sesIndiriliyor || !PIYANO.hazir;
+  }
+}
+
+async function ekSesleriIndir() {
+  if (sesIndiriliyor) return;
+  sesIndiriliyor = true;
+  const btn = document.getElementById('btn-ses-ek');
+  const cubuk = document.getElementById('ses-ilerleme');
+  const dolgu = document.getElementById('ses-ilerleme-dolgu');
+  btn.disabled = true;
+  cubuk.hidden = false;
+  dolgu.style.width = '0%';
+  sesMesaj('Ek katmanlar indiriliyor…');
+  try {
+    baglamOlustur();
+    await piyanoEkIndir(ctx, (bitti, toplam) => {
+      dolgu.style.width = Math.round((bitti / toplam) * 100) + '%';
+      sesMesaj('Ek katmanlar: ' + bitti + ' / ' + toplam);
+    });
+    sesMesaj('Ek katmanlar hazır. Yumuşak ve sert çalışın farkı duyulur.');
+  } catch (e) {
+    sesMesaj('İndirme tamamlanamadı: ' + (e && e.message ? e.message : 'bilinmeyen hata') +
+      '. İndirilen kısım saklandı, düğmeye tekrar basınca kaldığı yerden sürer.');
+  }
+  sesIndiriliyor = false;
+  cubuk.hidden = true;
+  await sesKartiYenile();
+  durumGuncelle();
 }
 
 async function sesleriIndir() {
@@ -8848,7 +9012,7 @@ async function sesleriIndir() {
 }
 
 async function sesleriSil() {
-  if (!confirm('İndirilen piyano sesleri silinsin mi? Gerekirse tekrar indirebilirsin (≈5,4 MB).')) return;
+  if (!confirm('İndirilen piyano sesleri (ek katmanlar dahil) silinsin mi? Gerekirse tekrar indirebilirsin.')) return;
   await piyanoSil();
   sesMesaj('İndirilen sesler silindi. Sentez ses kullanılacak.');
   await sesKartiYenile();
@@ -8858,13 +9022,14 @@ async function sesleriSil() {
 function sesKartiKur() {
   document.getElementById('btn-ses-indir').addEventListener('click', sesleriIndir);
   document.getElementById('btn-ses-sil').addEventListener('click', sesleriSil);
+  document.getElementById('btn-ses-ek').addEventListener('click', ekSesleriIndir);
 }
 
 // Açılışta önbellekteki sesleri belleğe al (varsa)
 function sesleriBaslangictaYukle() {
   baglamOlustur();
   durumGuncelle();
-  piyanoYukle(ctx).then(() => {
+  piyanoYukle(ctx).then(() => (PIYANO.hazir ? piyanoEkYukle(ctx) : null)).then(() => {
     durumGuncelle();
     if (aktifSekme === 'ayarlar') sesKartiYenile();
   });
@@ -8985,7 +9150,7 @@ function servisCalisaniKaydet() {
   if (!('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
     navigator.serviceWorker.getRegistrations().then(l => l.forEach(r => r.unregister())).catch(() => {});
-    if (window.caches) caches.keys().then(k => k.forEach(x => caches.delete(x))).catch(() => {});
+    if (window.caches) caches.keys().then(k => k.filter(x => x.indexOf('piyano-hoca-') === 0 || x === 'piyano-omr-v1').forEach(x => caches.delete(x))).catch(() => {});
   });
 }
 
