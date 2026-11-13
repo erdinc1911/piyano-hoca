@@ -6283,7 +6283,8 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
     pedalIlk: false,
     liste: [],           // { midi, bas, bit }
     zaman: null, sonrakiTik: 0, tikSayisi: 0, birimMs: 750, sayimTik: 0,
-    ctx: null
+    ctx: null,
+    canliSon: 0, canliImza: ''   // canlı porte: son güncelleme zamanı ve içerik parmak izi
   };
 
   /* ---------- AYAR ---------- */
@@ -6440,6 +6441,7 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
       if (K.sonrakiTik > 100000) break;
     }
     if (K.durum === 'sayim' && simdi >= K.t0) K.durum = 'kayit';
+    canliGuncelle(false);
     yaziGuncelle();
   }
 
@@ -6469,9 +6471,35 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
     try {
       K.ctx = api.baglam ? api.baglam() : null;
     } catch (e) { K.ctx = null; }
+    K.canliSon = 0;
+    K.canliImza = '';
+    // Ekrandaki eser yerine boş bir kayıt portesi aç; çaldıkça notalar buraya yazılır
+    if (api.canliAc) {
+      try { api.canliAc(api.bosEser('Kayıt (canlı)', pay, payda, A.tempo, 2)); } catch (e) {}
+    }
     K.zaman = setInterval(zamanlayici, 25);
     zamanlayici();
     api.mesaj('Sayımdan sonra çalmaya başla.');
+  }
+
+  // Canlı porteyi günceller: o ana kadar çalınan notalar (basılı tutulanlar dahil) yazılır
+  function canliGuncelle(zorla) {
+    if (!api.canliGuncelle || K.durum !== 'kayit') return;
+    const simdi = performance.now();
+    if (!zorla && simdi - K.canliSon < 200) return;
+    K.canliSon = simdi;
+    const liste = K.liste.slice();
+    Object.keys(K.acik).forEach((m) => {
+      liste.push({ midi: Number(m), bas: K.acik[m], bit: simdi, v: K.hizlar[m] });
+    });
+    const q = Math.max(0, (simdi - K.t0) / K.msQ);
+    const ov = (K.pay * 4) / K.payda;
+    const imza = liste.length + ':' + Object.keys(K.acik).length + ':' + Math.floor(q / ov);
+    if (imza === K.canliImza && !Object.keys(K.acik).length) return;
+    K.canliImza = imza;
+    const sonuc = notalaraCevir(liste, K.t0, A.tempo, K.pay, K.payda);
+    const olcu = Math.max(2, sonuc.olcuSayisi, Math.floor(q / ov) + 1);
+    api.canliGuncelle(sonuc.notalar, olcu, K.pedalOlay.length ? pedalCevir(K.pedalOlay, K.pedalIlk, K.t0, simdi, A.tempo, olcu * ov) : []);
   }
 
   function durdur() {
@@ -6486,6 +6514,7 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
     K.acik = {};
     K.liste = [];
     yaziGuncelle();
+    if (api.canliGeri) api.canliGeri();
     api.mesaj('Kayıt iptal edildi.');
   }
 
@@ -6502,12 +6531,14 @@ function piyanoSesBaslat(ctx, cikis, midi, t, sure, guc) {
     yaziGuncelle();
 
     if (sayimdaydi || !K.liste.length) {
+      if (api.canliGeri) api.canliGeri();
       api.mesaj('Hiç nota kaydedilmedi.');
       return;
     }
     const sonuc = notalaraCevir(K.liste, K.t0, A.tempo, K.pay, K.payda);
     sonuc.pedal = pedalCevir(K.pedalOlay, K.pedalIlk, K.t0, simdi, A.tempo, sonuc.olcuSayisi * (K.pay * 4) / K.payda);
     if (!sonuc.notalar.length) {
+      if (api.canliGeri) api.canliGeri();
       api.mesaj('Hiç nota kaydedilmedi.');
       return;
     }
@@ -9197,14 +9228,43 @@ function girisKur() {
   });
 }
 
+let kayitOncesi = null;      // kayıt başlamadan önce açık olan eser
+let kayitCanliEser = null;   // kayıt sırasında gösterilen geçici eser
+
 function kayitKur() {
   if (!window.KAYIT) return;
   KAYIT.kur({
     bosEser: (ad, pay, payda, tempo, sayi) => window.NOTA_IC.bosEser(ad, pay, payda, tempo, sayi),
     kaydet: (eser) => window.notaKayitOlustur(eser),
     ac: (eser, id) => {
+      kayitOncesi = null;
+      kayitCanliEser = null;
       if (window.eserListesiYenile) window.eserListesiYenile();
       window.eserAc(eser, id);
+    },
+    canliAc: (bos) => {
+      // Önceki eseri sakla, boş kayıt portesini göster (kaydedilmez)
+      kayitOncesi = { eser: aktifEser, id: aktifEserKayit };
+      kayitCanliEser = bos;
+      return window.eserAc(bos, null);
+    },
+    canliGuncelle: (notalar, olcu, pedal) => {
+      if (!kayitCanliEser || aktifEser !== kayitCanliEser) return;
+      aktifEser.notalar = notalar;
+      aktifEser.olcuSayisi = olcu;
+      aktifEser.pedal = pedal || [];
+      bolumBas = 1;
+      bolumSon = olcu;
+      porteYenile();
+      const kutu = document.getElementById('porte-kutu');
+      kutu.scrollLeft = kutu.scrollWidth;       // en yeni notalar görünsün
+    },
+    canliGeri: () => {
+      const once = kayitOncesi;
+      const canli = kayitCanliEser;
+      kayitOncesi = null;
+      kayitCanliEser = null;
+      if (once && once.eser && aktifEser === canli) window.eserAc(once.eser, once.id);
     },
     mesgul: () => {
       if (window.PERF && PERF.sahne()) return 'Önce Dene modunu kapat.';
