@@ -1486,6 +1486,16 @@ header h1 {
 .ar-dialog .ar-dugmeler button { width: auto; margin: 0; padding: 10px 18px; }
 .eser-islem .ar-yildiz, .hz-dugme .ar-yildiz { min-width: 44px; }
 
+/* Çalınacak bölüm: iki sütun (başlangıç / bitiş), altında "Tüm eser" */
+.bolum-sec { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin-bottom: 10px; }
+.bolum-kol { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bolum-kol .etiket { font-size: 0.8em; color: var(--soluk); }
+.bolum-kol .grup { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 0; }
+.bolum-kol .sayi-giris { flex: 1; min-width: 0; width: 100%; text-align: center; }
+.bolum-tumu { grid-column: 1 / -1; width: 100%; }
+.bolum-tumu { background: var(--yuzey-2); color: var(--yazi); border: 1px solid var(--cizgi); border-radius: 10px; padding: 10px 14px; font-size: 0.95rem; touch-action: manipulation; }
+.bolum-tumu:active { background: var(--cizgi); }
+
 </style>
 </head>
 <body>
@@ -1609,16 +1619,24 @@ header h1 {
         </section>
         <section class="cek-bolum">
           <h3>Çalınacak bölüm</h3>
-          <div class="grup">
-            <span class="etiket">Ölçü</span>
-            <button id="bas-azalt" type="button" class="kucuk">−</button>
-            <input id="bas-yazi" class="sayi-giris" type="number" inputmode="numeric" min="1" value="1" aria-label="Başlangıç ölçüsü">
-            <button id="bas-artir" type="button" class="kucuk">+</button>
-            <span class="etiket">–</span>
-            <button id="son-azalt" type="button" class="kucuk">−</button>
-            <input id="son-yazi" class="sayi-giris" type="number" inputmode="numeric" min="1" value="8" aria-label="Bitiş ölçüsü">
-            <button id="son-artir" type="button" class="kucuk">+</button>
-            <button id="bolum-tumu" type="button" class="kucuk genis">Tümü</button>
+          <div class="bolum-sec">
+            <div class="bolum-kol">
+              <span class="etiket">Başlangıç ölçüsü</span>
+              <div class="grup">
+                <button id="bas-azalt" type="button" class="kucuk">−</button>
+                <input id="bas-yazi" class="sayi-giris" type="number" inputmode="numeric" min="1" value="1" aria-label="Başlangıç ölçüsü">
+                <button id="bas-artir" type="button" class="kucuk">+</button>
+              </div>
+            </div>
+            <div class="bolum-kol">
+              <span class="etiket">Bitiş ölçüsü</span>
+              <div class="grup">
+                <button id="son-azalt" type="button" class="kucuk">−</button>
+                <input id="son-yazi" class="sayi-giris" type="number" inputmode="numeric" min="1" value="8" aria-label="Bitiş ölçüsü">
+                <button id="son-artir" type="button" class="kucuk">+</button>
+              </div>
+            </div>
+            <button id="bolum-tumu" type="button" class="kucuk genis bolum-tumu">Tüm eser</button>
           </div>
           <button id="dongu" type="button" class="cal-dugme">🔁 Döngü</button>
         </section>
